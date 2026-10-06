@@ -8,10 +8,15 @@ struct HistoryDismissalProbe {
         let popoverWindow = NSWindow()
         let otherWindow = NSWindow()
         var dismissCount = 0
+        let bubbleWindow = NSWindow()
         let monitor = HistoryPopoverDismissalMonitor(
             popoverWindow: { popoverWindow },
+            relatedWindows: { [bubbleWindow] },
             onDismiss: { dismissCount += 1 }
         )
+        // A click in the delete confirmation bubble belongs to the popover.
+        monitor.handleLocalMouseDown(in: bubbleWindow)
+        guard dismissCount == 0 else { exit(6) }
 
         monitor.handleLocalMouseDown(in: popoverWindow)
         guard dismissCount == 0 else { exit(1) }

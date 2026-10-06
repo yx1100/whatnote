@@ -3,13 +3,20 @@ import AppKit
 @MainActor
 final class HistoryPopoverDismissalMonitor {
     private let popoverWindow: () -> NSWindow?
+    /// Windows that belong to the popover, such as a confirmation bubble shown from it.
+    private let relatedWindows: () -> [NSWindow]
     private let onDismiss: () -> Void
     private var localMonitor: Any?
     private var globalMonitor: Any?
     private var keyMonitor: Any?
 
-    init(popoverWindow: @escaping () -> NSWindow?, onDismiss: @escaping () -> Void) {
+    init(
+        popoverWindow: @escaping () -> NSWindow?,
+        relatedWindows: @escaping () -> [NSWindow] = { [] },
+        onDismiss: @escaping () -> Void
+    ) {
         self.popoverWindow = popoverWindow
+        self.relatedWindows = relatedWindows
         self.onDismiss = onDismiss
     }
 
@@ -46,7 +53,7 @@ final class HistoryPopoverDismissalMonitor {
     }
 
     func handleLocalMouseDown(in window: NSWindow?) {
-        guard window !== popoverWindow() else { return }
+        guard window !== popoverWindow(), !relatedWindows().contains(where: { $0 === window }) else { return }
         onDismiss()
     }
 

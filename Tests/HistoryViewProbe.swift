@@ -36,10 +36,6 @@ struct HistoryViewProbe {
               labels.contains("删除所有已完成的便签"),
               texts(in: controller.view).contains("2 条") else { exit(2) }
 
-        controls.first(where: { $0.accessibilityLabel() == "删除便签" })?.performClick(nil)
-        controls.first(where: { $0.accessibilityLabel() == "删除所有已完成的便签" })?.performClick(nil)
-        guard deletedID == second.id, clearCount == 1 else { exit(3) }
-
         if let capturePath = CommandLine.arguments.dropFirst().first(where: { $0.hasSuffix(".png") }),
            let bitmap = controller.view.bitmapImageRepForCachingDisplay(in: controller.view.bounds) {
             controller.view.cacheDisplay(in: controller.view.bounds, to: bitmap)
@@ -48,18 +44,27 @@ struct HistoryViewProbe {
             }
         }
 
-        // Restoring removes the row and keeps the list open for the next one.
-        controls.first(where: { $0.accessibilityLabel() == "恢复便签" })?.performClick(nil)
+        // Deleting asks first; once confirmed the row goes and the list stays open.
+        controls.first(where: { $0.accessibilityLabel() == "删除便签" })?.performClick(nil)
+        guard controller.pendingDeleteID == second.id, deletedID == nil else { exit(3) }
+        controller.confirmPendingDelete()
         RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         controls = descendants(of: controller.view).compactMap { $0 as? NSControl }
         labels = controls.compactMap { $0.accessibilityLabel() }
-        guard restoredIDs == [second.id],
+        guard deletedID == second.id,
+              controller.pendingDeleteID == nil,
               controller.notes.map(\.id) == [first.id],
-              labels.filter({ $0 == "恢复便签" }).count == 1,
-              texts(in: controller.view).contains("1 条") else { exit(6) }
+              labels.filter({ $0 == "删除便签" }).count == 1,
+              texts(in: controller.view).contains("1 条") else { exit(9) }
+
+        controls.first(where: { $0.accessibilityLabel() == "删除所有已完成的便签" })?.performClick(nil)
+        guard clearCount == 1 else { exit(10) }
+
+        // Restoring removes the row and keeps the list open for the next one.
         controls.first(where: { $0.accessibilityLabel() == "恢复便签" })?.performClick(nil)
         RunLoop.main.run(until: Date().addingTimeInterval(0.1))
-        guard restoredIDs == [second.id, first.id],
+        guard restoredIDs == [first.id],
+              controller.notes.isEmpty,
               texts(in: controller.view).contains("没有已完成的便签"),
               texts(in: controller.view).contains("0 条"),
               (descendants(of: controller.view).compactMap { $0 as? NSControl }

@@ -562,7 +562,26 @@ struct RichTextProbe {
         let listMarkers = markerLengths && markerCursor && pasteMarkers
         print("listMarkers lengths=\(markerLengths) cursor=\(markerCursor) paste=\(pasteMarkers)")
 
-        let codeBlocks = listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // Return on the empty last line below a to-do (its marker just removed, or the list
+        // just ended) adds a plain line, not a new to-do.
+        let afterTodoEditor = NSTextView()
+        afterTodoEditor.isRichText = true
+        afterTodoEditor.string = "☐ 买牛奶\n☐ "
+        afterTodoEditor.setSelectedRange(NSRange(location: afterTodoEditor.string.utf16.count, length: 0))
+        let markerRemoved = RichTextFormatting.handleMarkerBackspace(in: afterTodoEditor)
+            && afterTodoEditor.string == "☐ 买牛奶\n"
+        let plainAfterBackspace = !RichTextFormatting.handleStructuredNewline(in: afterTodoEditor)
+            && afterTodoEditor.string == "☐ 买牛奶\n"
+        afterTodoEditor.string = "☐ 买牛奶\n☐ "
+        afterTodoEditor.setSelectedRange(NSRange(location: afterTodoEditor.string.utf16.count, length: 0))
+        let listEnded = RichTextFormatting.handleStructuredNewline(in: afterTodoEditor)
+            && afterTodoEditor.string == "☐ 买牛奶\n"
+        let plainAfterListEnd = !RichTextFormatting.handleStructuredNewline(in: afterTodoEditor)
+            && afterTodoEditor.string == "☐ 买牛奶\n"
+        let plainLineAfterList = markerRemoved && plainAfterBackspace && listEnded && plainAfterListEnd
+        print("plainLineAfterList backspace=\(markerRemoved && plainAfterBackspace) listEnd=\(listEnded && plainAfterListEnd)")
+
+        let codeBlocks = plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

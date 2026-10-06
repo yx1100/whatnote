@@ -126,8 +126,9 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
             onRestore: { [weak self] id in
                 self?.restoreFromHistory(id: id)
             },
-            onDelete: { [weak self] id in
-                self?.confirmDeleteHistoryNote(id: id)
+            onDelete: { id in
+                // Already confirmed in the bubble next to the trash button.
+                _ = NoteStore.shared.permanentlyDelete(id: id)
             },
             onClear: { [weak self] in
                 self?.confirmClearHistory()
@@ -140,6 +141,9 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         popover.show(relativeTo: sourceView.bounds, of: sourceView, preferredEdge: .minY)
         let dismissalMonitor = HistoryPopoverDismissalMonitor(
             popoverWindow: { [weak popover] in popover?.contentViewController?.view.window },
+            relatedWindows: { [weak popover] in
+                [(popover?.contentViewController as? HistoryPopoverViewController)?.confirmationWindow].compactMap { $0 }
+            },
             onDismiss: { [weak self] in self?.dismissHistoryPopover() }
         )
         historyDismissalMonitor = dismissalMonitor
@@ -234,19 +238,6 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         }
         HotKeyPreferences.setNewNoteShortcut(shortcut)
         return true
-    }
-
-    private func confirmDeleteHistoryNote(id: UUID) {
-        dismissHistoryPopover()
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "要删除这条便签吗？"
-        alert.informativeText = "此操作无法撤销。"
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "删除")
-        alert.addButton(withTitle: "取消")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        _ = NoteStore.shared.permanentlyDelete(id: id)
     }
 
     private func confirmClearHistory() {

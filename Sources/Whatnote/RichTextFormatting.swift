@@ -704,10 +704,13 @@ enum RichTextFormatting {
         let selection = textView.selectedRange()
         guard selection.length == 0, selection.location <= storage.length else { return false }
         let nsString = storage.string as NSString
-        let lookup = storage.length == 0 ? 0 : min(selection.location, storage.length - 1)
-        let paragraph = storage.length == 0
-            ? NSRange(location: 0, length: 0)
-            : nsString.paragraphRange(for: NSRange(location: lookup, length: 0))
+        // On the empty last line the cursor sits after the final line break; that line is
+        // plain, not part of the item above it.
+        let atEmptyLastLine = selection.location == storage.length
+            && (storage.length == 0 || nsString.character(at: storage.length - 1) == 0x0A)
+        let paragraph = atEmptyLastLine
+            ? NSRange(location: storage.length, length: 0)
+            : nsString.paragraphRange(for: NSRange(location: min(selection.location, storage.length - 1), length: 0))
 
         if let handled = handleCodeNewline(in: textView, selection: selection) { return handled }
 
