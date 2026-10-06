@@ -95,31 +95,22 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         guard !notes.isEmpty,
               let screen = NSScreen.screens.first(where: { $0.frame.origin == .zero }) ?? NSScreen.screens.first else { return }
 
-        let sizes = notes.map { note in
-            controllers[note.id]?.window?.frame.size ?? note.frame.rect.size
-        }
-        let area = NoteWindowLayout.usableFrame(in: screen.visibleFrame, avoiding: otherAppsUIFrames())
-        let frames = NoteWindowLayout.alignedFrames(sizes: sizes, in: area)
-        for (note, frame) in zip(notes, frames) {
-            controllers[note.id]?.arrangeOnDesktop(to: frame)
+        // Keep clear of the Dock and other apps' UI along the screen edges.
+        let visibleFrame = screen.visibleFrame
+        let edgeWindows = OtherAppsUI.edgeWindows(near: visibleFrame)
+        Task { @MainActor [weak self] in
+            let obstacles = await OtherAppsUI.visibleFrames(of: edgeWindows)
+            self?.layOut(notes, in: NoteWindowLayout.usableFrame(in: visibleFrame, avoiding: obstacles))
         }
     }
 
-    /// On-screen windows of other apps, such as the Dock or floating panels, in screen coordinates.
-    /// Reading window bounds needs no extra permission.
-    private func otherAppsUIFrames() -> [NSRect] {
-        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-                as? [[String: Any]] else { return [] }
-        let ownProcess = ProcessInfo.processInfo.processIdentifier
-        let mainDisplayHeight = CGDisplayBounds(CGMainDisplayID()).height
-        return windows.compactMap { info -> NSRect? in
-            guard (info[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value != ownProcess,
-                  (info[kCGWindowLayer as String] as? NSNumber)?.intValue ?? -1 >= 0,
-                  (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0 > 0,
-                  let bounds = info[kCGWindowBounds as String] as? NSDictionary,
-                  let rect = CGRect(dictionaryRepresentation: bounds) else { return nil }
-            // Window bounds are measured from the top of the main display; flip to AppKit's.
-            return NSRect(x: rect.minX, y: mainDisplayHeight - rect.maxY, width: rect.width, height: rect.height)
+    private func layOut(_ notes: [StickyNote], in area: NSRect) {
+        let sizes = notes.map { note in
+            controllers[note.id]?.window?.frame.size ?? note.frame.rect.size
+        }
+        let frames = NoteWindowLayout.alignedFrames(sizes: sizes, in: area)
+        for (note, frame) in zip(notes, frames) {
+            controllers[note.id]?.arrangeOnDesktop(to: frame)
         }
     }
 
