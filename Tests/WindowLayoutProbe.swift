@@ -73,7 +73,7 @@ struct WindowLayoutProbe {
             NSRect(x: 300, y: 200, width: 600, height: 400),     // an ordinary window
             NSRect(x: 1090, y: 790, width: 340, height: 70)      // a notification banner
         ])
-        guard usable == NSRect(x: 52, y: 0, width: 1305, height: 875) else { exit(13) }
+        guard usable == NSRect(x: 36, y: 0, width: 1337, height: 875) else { exit(13) }
         guard NoteWindowLayout.usableFrame(in: visible, avoiding: []) == visible else { exit(14) }
 
         print("window layout: pass")

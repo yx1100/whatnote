@@ -8,7 +8,8 @@ enum NoteWindowLayout {
         in visibleFrame: NSRect,
         avoiding obstacles: [NSRect],
         edgeTolerance: CGFloat = 24,
-        spacing: CGFloat = 8
+        // Laying out adds its own 16 pt margin, so this leaves an 8 pt gap beside other apps' UI.
+        spacing: CGFloat = -8
     ) -> NSRect {
         var minX = visibleFrame.minX
         var maxX = visibleFrame.maxX
