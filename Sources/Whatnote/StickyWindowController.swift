@@ -361,13 +361,15 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         )
     }
 
-    /// The window height that shows all of the text, between the two bars.
+    /// The window height that shows all of the text between the two bars, plus one empty
+    /// line of room below it.
     private func heightFittingText() -> CGFloat? {
         let textView = rootView.textView
         guard let layoutManager = textView.layoutManager, let container = textView.textContainer else { return nil }
         layoutManager.ensureLayout(for: container)
         let textHeight = ceil(layoutManager.usedRect(for: container).height + 2 * textView.textContainerInset.height)
-        return textHeight + NoteAppearance.topBarHeight + NoteAppearance.bottomBarHeight
+        let emptyLine = ceil(layoutManager.defaultLineHeight(for: NoteAppearance.bodyFont()) + NoteAppearance.paragraphSpacing)
+        return textHeight + emptyLine + NoteAppearance.topBarHeight + NoteAppearance.bottomBarHeight
     }
 
     /// Extends the note downward while its text needs more room, keeping the top edge in place,
