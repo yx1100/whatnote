@@ -536,14 +536,19 @@ struct RichTextProbe {
                 in: markerCursorEditor
             ).location
         }
-        // ⇧⌘← from the end of "☐ 买" selects only "买"; a selection into the next line keeps markers.
-        let lineSelection = RichTextFormatting.selectionAvoidingListMarkers(
-            NSRange(location: 2, length: 3), from: NSRange(location: 5, length: 0), isUserMove: true, in: markerCursorEditor
-        ) == NSRange(location: 4, length: 1)
-        let multiLineSelection = RichTextFormatting.selectionAvoidingListMarkers(
-            NSRange(location: 2, length: 6), from: NSRange(location: 8, length: 0), isUserMove: true, in: markerCursorEditor
-        ) == NSRange(location: 2, length: 6)
-        let markerCursor = lineSelection && multiLineSelection && skipped(3, from: 0) == 4 && skipped(2, from: 0) == 4
+        // Dragging into "☐ 买" takes the marker; ⇧⌘← first stops at the text, then takes the marker.
+        func selected(_ proposed: NSRange, from old: NSRange, keyboard: Bool) -> NSRange {
+            RichTextFormatting.selectionAvoidingListMarkers(
+                proposed, from: old, isUserMove: true, isKeyboard: keyboard, in: markerCursorEditor
+            )
+        }
+        let lineSelection = selected(NSRange(location: 3, length: 2), from: NSRange(location: 5, length: 0), keyboard: false)
+            == NSRange(location: 2, length: 3)
+        let partialMarkerSelection = selected(NSRange(location: 2, length: 3), from: NSRange(location: 5, length: 0), keyboard: true)
+            == NSRange(location: 4, length: 1)
+            && selected(NSRange(location: 2, length: 3), from: NSRange(location: 4, length: 1), keyboard: true)
+            == NSRange(location: 2, length: 3)
+        let markerCursor = lineSelection && partialMarkerSelection && skipped(3, from: 0) == 4 && skipped(2, from: 0) == 4
             && skipped(3, from: 4) == 1 && skipped(7, from: 0) == 9
             && skipped(4, from: 0) == 4 && skipped(3, from: 0, userMove: false) == 3
         func pasted(_ text: String, into existing: String, at location: Int) -> String {
