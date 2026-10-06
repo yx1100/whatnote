@@ -143,10 +143,11 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         toCharacterRange newSelectedCharRange: NSRange
     ) -> NSRange {
         // Clicks and arrow keys, not typing, which also moves the selection.
-        let isUserMove = NSApp.currentEvent.map { event in
-            [.leftMouseDown, .leftMouseDragged, .leftMouseUp].contains(event.type)
-                || (event.type == .keyDown && (123...126).contains(event.keyCode)) // arrow keys
-        } ?? false
+        let event = NSApp.currentEvent
+        let isArrowKey = event.map { $0.type == .keyDown && (123...126).contains($0.keyCode) } ?? false
+        let isUserMove = isArrowKey || (event.map {
+            [.leftMouseDown, .leftMouseDragged, .leftMouseUp].contains($0.type)
+        } ?? false)
         let avoidingDividers = RichTextFormatting.selectionAvoidingDividers(
             newSelectedCharRange,
             from: oldSelectedCharRange,
@@ -157,6 +158,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
             avoidingDividers,
             from: oldSelectedCharRange,
             isUserMove: isUserMove,
+            isKeyboard: isArrowKey,
             in: textView
         )
     }
