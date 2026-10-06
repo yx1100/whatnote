@@ -1,8 +1,22 @@
 import AppKit
 
 final class StickyWindow: NSWindow {
+    /// Height of the strip along the bottom edge where a double-click fits the note to its text.
+    static let bottomEdgeHeight: CGFloat = 6
+    var onBottomEdgeDoubleClick: (() -> Void)?
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown, event.clickCount == 2,
+           event.locationInWindow.y <= Self.bottomEdgeHeight,
+           let onBottomEdgeDoubleClick {
+            onBottomEdgeDoubleClick()
+            return
+        }
+        super.sendEvent(event)
+    }
 }
 
 /// Keeps a normal window resident on its original Space while a separate
