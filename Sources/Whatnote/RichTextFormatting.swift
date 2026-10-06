@@ -391,7 +391,8 @@ enum RichTextFormatting {
 
     /// The cursor never stops inside a list or to-do marker such as "☐ ", "• " or "1. ": it goes
     /// to the start of the item's text. Moving left from there goes on to the line above.
-    /// A selection within one item (⇧⌘←, dragging) covers only its text, not the marker.
+    /// A selection that reaches into a marker (⇧⌘←, dragging) takes the whole marker, so one
+    /// Delete removes the item's text and its checkbox or bullet together.
     static func selectionAvoidingListMarkers(
         _ proposed: NSRange,
         from old: NSRange,
@@ -409,10 +410,7 @@ enum RichTextFormatting {
               proposed.location < start + length else { return proposed }
         let textStart = start + length
         if proposed.length > 0 {
-            // Selections reaching into other lines keep the markers, so whole items can be copied.
-            guard NSMaxRange(proposed) <= NSMaxRange(paragraph) else { return proposed }
-            let end = max(NSMaxRange(proposed), textStart)
-            return NSRange(location: textStart, length: end - textStart)
+            return NSRange(location: start, length: NSMaxRange(proposed) - start)
         }
         if old.length == 0, old.location == textStart, proposed.location < old.location, start > 0 {
             return NSRange(location: start - 1, length: 0)
