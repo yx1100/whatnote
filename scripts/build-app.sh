@@ -8,6 +8,12 @@ contents_dir="$app_dir/Contents"
 marketing_version="${MARKETING_VERSION:-1.2.2}"
 build_number="${BUILD_NUMBER:-5}"
 bundle_identifier="${BUNDLE_IDENTIFIER:-com.yx1100.whatnote}"
+# A self-signed certificate named "Whatnote Local Signing" in the login keychain gives every
+# build the same identity, so macOS keeps permissions such as Screen Recording across builds.
+local_identity="Whatnote Local Signing"
+if [[ -z "${CODESIGN_IDENTITY:-}" ]] && security find-certificate -c "$local_identity" >/dev/null 2>&1; then
+  CODESIGN_IDENTITY="$local_identity"
+fi
 codesign_identity="${CODESIGN_IDENTITY:--}"
 
 if [[ ! "$marketing_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
@@ -108,7 +114,7 @@ print -r -- '"CFBundleDisplayName" = "随便记";
 "CFBundleName" = "随便记";' > "$localized_dir/InfoPlist.strings"
 
 codesign_options=(--force --sign "$codesign_identity")
-if [[ "$codesign_identity" != "-" ]]; then
+if [[ "$codesign_identity" != "-" && "$codesign_identity" != "$local_identity" ]]; then
   codesign_options+=(--options runtime --timestamp)
 fi
 
