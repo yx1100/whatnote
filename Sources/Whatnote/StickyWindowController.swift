@@ -361,23 +361,40 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         )
     }
 
+    /// The window height that shows all of the text between the two bars, plus one empty
+    /// line of room below it.
+    private func heightFittingText() -> CGFloat? {
+        let textView = rootView.textView
+        guard let layoutManager = textView.layoutManager, let container = textView.textContainer else { return nil }
+        layoutManager.ensureLayout(for: container)
+        let textHeight = ceil(layoutManager.usedRect(for: container).height + 2 * textView.textContainerInset.height)
+        let emptyLine = ceil(layoutManager.defaultLineHeight(for: NoteAppearance.bodyFont()) + NoteAppearance.paragraphSpacing)
+        return textHeight + emptyLine + NoteAppearance.topBarHeight + NoteAppearance.bottomBarHeight
+    }
+
     /// Extends the note downward while its text needs more room, keeping the top edge in place,
     /// until the bottom reaches the edge of the screen. It never shrinks the note.
     private func growToFitText() {
-        let textView = rootView.textView
-        guard let layoutManager = textView.layoutManager, let container = textView.textContainer else { return }
-        layoutManager.ensureLayout(for: container)
-        let textHeight = ceil(layoutManager.usedRect(for: container).height + 2 * textView.textContainerInset.height)
-        let needed = textHeight + NoteAppearance.topBarHeight + NoteAppearance.bottomBarHeight
+        guard let needed = heightFittingText(), needed > windowResidency.activeWindow.frame.height + 0.5 else { return }
+        setHeight(needed, animate: false)
+    }
+
+    /// Double-clicking the bottom edge makes the note exactly as tall as its text, longer or
+    /// shorter, keeping the top edge in place.
+    func fitHeightToText() {
+        guard let needed = heightFittingText() else { return }
+        setHeight(max(needed, NoteAppearance.minimumSize.height), animate: true)
+    }
+
+    private func setHeight(_ requested: CGFloat, animate: Bool) {
         let window = windowResidency.activeWindow
         let frame = window.frame
-        guard needed > frame.height + 0.5,
-              let visible = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
-        let height = min(needed, frame.maxY - visible.minY)
-        guard height > frame.height + 0.5 else { return }
-        let grown = NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height)
-        window.setFrame(grown, display: true)
-        saveFrame(grown)
+        guard let visible = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+        let height = min(requested, frame.maxY - visible.minY)
+        guard abs(height - frame.height) > 0.5 else { return }
+        let fitted = NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height)
+        window.setFrame(fitted, display: true, animate: animate)
+        saveFrame(fitted)
     }
 
     private func saveFrame() {
@@ -392,6 +409,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
 
     private func configureWindow(_ window: StickyWindow) {
         window.delegate = self
+        window.onBottomEdgeDoubleClick = { [weak self] in self?.fitHeightToText() }
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = true

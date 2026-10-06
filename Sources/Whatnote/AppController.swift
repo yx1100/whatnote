@@ -95,10 +95,20 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         guard !notes.isEmpty,
               let screen = NSScreen.screens.first(where: { $0.frame.origin == .zero }) ?? NSScreen.screens.first else { return }
 
+        // Keep clear of the Dock and other apps' UI along the screen edges.
+        let visibleFrame = screen.visibleFrame
+        let edgeWindows = OtherAppsUI.edgeWindows(near: visibleFrame)
+        Task { @MainActor [weak self] in
+            let obstacles = await OtherAppsUI.visibleFrames(of: edgeWindows)
+            self?.layOut(notes, in: NoteWindowLayout.usableFrame(in: visibleFrame, avoiding: obstacles))
+        }
+    }
+
+    private func layOut(_ notes: [StickyNote], in area: NSRect) {
         let sizes = notes.map { note in
             controllers[note.id]?.window?.frame.size ?? note.frame.rect.size
         }
-        let frames = NoteWindowLayout.alignedFrames(sizes: sizes, in: screen.visibleFrame)
+        let frames = NoteWindowLayout.alignedFrames(sizes: sizes, in: area)
         for (note, frame) in zip(notes, frames) {
             controllers[note.id]?.arrangeOnDesktop(to: frame)
         }
