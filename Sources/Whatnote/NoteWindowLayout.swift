@@ -1,6 +1,38 @@
 import AppKit
 
 enum NoteWindowLayout {
+    /// The part of `visibleFrame` left free by other apps' UI along its left, right and bottom
+    /// edges, such as a Dock or a floating panel. Only strips that hug an edge count; ordinary
+    /// windows and small banners do not shrink the area.
+    static func usableFrame(
+        in visibleFrame: NSRect,
+        avoiding obstacles: [NSRect],
+        edgeTolerance: CGFloat = 24,
+        spacing: CGFloat = 8
+    ) -> NSRect {
+        var minX = visibleFrame.minX
+        var maxX = visibleFrame.maxX
+        var minY = visibleFrame.minY
+        for obstacle in obstacles {
+            let overlap = obstacle.intersection(visibleFrame)
+            guard !overlap.isNull, overlap.width > 0, overlap.height > 0 else { continue }
+            let isSideStrip = overlap.width < visibleFrame.width * 0.35 && overlap.height >= visibleFrame.height * 0.15
+            let isEndStrip = overlap.height < visibleFrame.height * 0.35 && overlap.width >= visibleFrame.width * 0.15
+            if isSideStrip, overlap.minX <= visibleFrame.minX + edgeTolerance {
+                minX = max(minX, overlap.maxX + spacing)
+            } else if isSideStrip, overlap.maxX >= visibleFrame.maxX - edgeTolerance {
+                maxX = min(maxX, overlap.minX - spacing)
+            } else if isEndStrip, overlap.minY <= visibleFrame.minY + edgeTolerance {
+                minY = max(minY, overlap.maxY + spacing)
+            }
+            // The top edge is left alone: below the menu bar only passing banners appear there.
+        }
+        let usable = NSRect(x: minX, y: minY, width: maxX - minX, height: visibleFrame.maxY - minY)
+        // Never give up most of the screen because of something unexpected.
+        guard usable.width >= visibleFrame.width / 2, usable.height >= visibleFrame.height / 2 else { return visibleFrame }
+        return usable
+    }
+
     static func alignedFrames(
         sizes: [NSSize],
         in visibleFrame: NSRect,

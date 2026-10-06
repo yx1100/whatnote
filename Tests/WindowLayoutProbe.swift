@@ -64,6 +64,18 @@ struct WindowLayoutProbe {
             }
         }
 
+        // Arranging keeps clear of other apps' UI along the edges: a floating panel on the left,
+        // a Dock on the right. An ordinary window and a small banner do not count.
+        let visible = NSRect(x: 0, y: 0, width: 1440, height: 875)
+        let usable = NoteWindowLayout.usableFrame(in: visible, avoiding: [
+            NSRect(x: 0, y: 300, width: 44, height: 260),        // floating panel on the left edge
+            NSRect(x: 1365, y: 60, width: 75, height: 760),      // Dock on the right
+            NSRect(x: 300, y: 200, width: 600, height: 400),     // an ordinary window
+            NSRect(x: 1090, y: 790, width: 340, height: 70)      // a notification banner
+        ])
+        guard usable == NSRect(x: 52, y: 0, width: 1305, height: 875) else { exit(13) }
+        guard NoteWindowLayout.usableFrame(in: visible, avoiding: []) == visible else { exit(14) }
+
         print("window layout: pass")
     }
 }
