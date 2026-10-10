@@ -101,8 +101,10 @@ enum DividerLine {
 }
 
 enum TodoCheckbox {
+    /// Checkboxes keep the body-text size even on a line in a heading's larger font, such as
+    /// a to-do started right under a heading.
     static func diameter(for font: NSFont) -> CGFloat {
-        min(20, (font.pointSize * 0.9).rounded())
+        (min(font.pointSize, NoteAppearance.bodyFontSize) * 0.9).rounded()
     }
 
     /// Space the marker takes in the line: the circle plus a small gap before the following space.
