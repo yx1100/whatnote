@@ -120,7 +120,13 @@ enum RichTextFormatting {
         attributes.removeValue(forKey: .strikethroughStyle)
         attributes.removeValue(forKey: .link)
         attributes.removeValue(forKey: .attachment)
-        if attributes[.font] == nil { attributes[.font] = NoteAppearance.bodyFont() }
+        // A list item is body text, even on an empty line that still carries a heading's font.
+        if attributes[.font] == nil || headingLevel(of: attributes[.font] as? NSFont) != nil {
+            attributes[.font] = NoteAppearance.bodyFont()
+            var typing = textView.typingAttributes
+            typing[.font] = NoteAppearance.bodyFont()
+            textView.typingAttributes = typing
+        }
         storage.replaceCharacters(in: NSRange(location: location, length: 0), with: NSAttributedString(string: marker, attributes: attributes))
     }
 
