@@ -838,6 +838,10 @@ enum RichTextFormatting {
             : string.character(at: selection.location) == 0x0A
                 && (selection.location == 0 || string.character(at: selection.location - 1) == 0x0A)
         guard onEmptyLine else { return }
+        // The line's own break sets its height, and so the cursor's.
+        if !atEnd {
+            storage.addAttribute(.font, value: NoteAppearance.bodyFont(), range: NSRange(location: selection.location, length: 1))
+        }
         var typing = textView.typingAttributes
         typing[.font] = NoteAppearance.bodyFont()
         textView.typingAttributes = typing

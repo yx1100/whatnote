@@ -596,6 +596,7 @@ struct RichTextProbe {
         belowHeadingEditor.typingAttributes = [.font: RichTextFormatting.headingFont(level: 1)]
         RichTextFormatting.leaveHeadingStyleOnEmptyLine(in: belowHeadingEditor)
         let bodyBelowHeading = RichTextFormatting.headingLevel(of: belowHeadingEditor.typingAttributes[.font] as? NSFont) == nil
+            && RichTextFormatting.headingLevel(of: fontAt(belowHeadingEditor, 3)) == nil
         belowHeadingEditor.setSelectedRange(NSRange(location: 1, length: 0))
         belowHeadingEditor.typingAttributes = [.font: RichTextFormatting.headingFont(level: 1)]
         RichTextFormatting.leaveHeadingStyleOnEmptyLine(in: belowHeadingEditor)
