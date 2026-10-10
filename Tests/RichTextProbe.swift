@@ -183,6 +183,8 @@ struct RichTextProbe {
 
         let todoMarkdownEditor = convertedEditor("- [ ] 买牛奶\n- [x] 已完成")
         let todoMarkdown = todoMarkdownEditor.string == "☐ 买牛奶\n☑ 已完成"
+            && convertedEditor("[] 买菜\n【】 写周报\n[ ] 散步").string == "☐ 买菜\n☐ 写周报\n☐ 散步"
+            && convertedEditor("[]不是待办").string == "[]不是待办"
 
         // Clicking a checkbox flips only that item between open and done.
         let clickEditor = NSTextView()

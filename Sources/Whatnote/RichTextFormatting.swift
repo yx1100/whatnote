@@ -690,6 +690,16 @@ enum RichTextFormatting {
             applyTodoCompletion(isDone, storage: storage, paragraphStart: start)
         }
 
+        // [] 待办 / 【】 待办 (also "[ ]")
+        for match in matches(#"(?m)^(?:\[ ?\]|【】) "#).reversed() {
+            let start = match.range.location
+            var attributes = storage.attributes(at: start, effectiveRange: nil)
+            attributes.removeValue(forKey: .strikethroughStyle)
+            replace(match.range, with: NSAttributedString(string: "\(pendingTodoMarker) ", attributes: attributes))
+            applyListIndent(false, storage: storage, location: start)
+            applyTodoCompletion(false, storage: storage, paragraphStart: start)
+        }
+
         // - 列表 / * 列表
         for match in matches(#"(?m)^[*-] "#).reversed() {
             storage.replaceCharacters(in: match.range, with: "• ")
