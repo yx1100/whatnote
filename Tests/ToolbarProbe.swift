@@ -50,9 +50,9 @@ struct ToolbarProbe {
         let formattingButtons = descendants(of: footer).compactMap { $0 as? NoteToolButton }
         guard formattingButtons.compactMap({ $0.accessibilityLabel() }) == [
             "粗体（⌘B）",
-            "项目符号列表（⇧⌘7）",
-            "编号列表（⇧⌘9）",
-            "核对清单（⇧⌘L）",
+            "项目符号列表（⌘7）",
+            "编号列表（⌘8）",
+            "核对清单（⌘9）",
             "分隔线",
             "代码块",
             "插入图片"

@@ -120,7 +120,13 @@ enum RichTextFormatting {
         attributes.removeValue(forKey: .strikethroughStyle)
         attributes.removeValue(forKey: .link)
         attributes.removeValue(forKey: .attachment)
-        if attributes[.font] == nil { attributes[.font] = NoteAppearance.bodyFont() }
+        // A list item is body text, even on an empty line that still carries a heading's font.
+        if attributes[.font] == nil || headingLevel(of: attributes[.font] as? NSFont) != nil {
+            attributes[.font] = NoteAppearance.bodyFont()
+            var typing = textView.typingAttributes
+            typing[.font] = NoteAppearance.bodyFont()
+            textView.typingAttributes = typing
+        }
         storage.replaceCharacters(in: NSRange(location: location, length: 0), with: NSAttributedString(string: marker, attributes: attributes))
     }
 
@@ -684,6 +690,16 @@ enum RichTextFormatting {
             applyTodoCompletion(isDone, storage: storage, paragraphStart: start)
         }
 
+        // [] 待办 / 【】 待办 (also "[ ]")
+        for match in matches(#"(?m)^(?:\[ ?\]|【】) "#).reversed() {
+            let start = match.range.location
+            var attributes = storage.attributes(at: start, effectiveRange: nil)
+            attributes.removeValue(forKey: .strikethroughStyle)
+            replace(match.range, with: NSAttributedString(string: "\(pendingTodoMarker) ", attributes: attributes))
+            applyListIndent(false, storage: storage, location: start)
+            applyTodoCompletion(false, storage: storage, paragraphStart: start)
+        }
+
         // - 列表 / * 列表
         for match in matches(#"(?m)^[*-] "#).reversed() {
             storage.replaceCharacters(in: match.range, with: "• ")
@@ -818,6 +834,29 @@ enum RichTextFormatting {
 
     /// Code lines always end with their own newline, so the empty line after a block at the
     /// end of the note is plain text. Clicking there must not keep typing in code style.
+    /// An empty line starts in body text even right below a heading, whose font AppKit would
+    /// otherwise carry over; two headings in a row are rare.
+    static func leaveHeadingStyleOnEmptyLine(in textView: NSTextView) {
+        guard let storage = textView.textStorage,
+              headingLevel(of: textView.typingAttributes[.font] as? NSFont) != nil else { return }
+        let selection = textView.selectedRange()
+        guard selection.length == 0 else { return }
+        let string = storage.string as NSString
+        let atEnd = selection.location >= string.length
+        let onEmptyLine = atEnd
+            ? (string.length == 0 || string.character(at: string.length - 1) == 0x0A)
+            : string.character(at: selection.location) == 0x0A
+                && (selection.location == 0 || string.character(at: selection.location - 1) == 0x0A)
+        guard onEmptyLine else { return }
+        // The line's own break sets its height, and so the cursor's.
+        if !atEnd {
+            storage.addAttribute(.font, value: NoteAppearance.bodyFont(), range: NSRange(location: selection.location, length: 1))
+        }
+        var typing = textView.typingAttributes
+        typing[.font] = NoteAppearance.bodyFont()
+        textView.typingAttributes = typing
+    }
+
     static func leaveCodeStyleOnEmptyLastLine(in textView: NSTextView) {
         guard isAtEmptyLastLine(textView),
               CodeBlock.isCodeStyle(textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle) else { return }

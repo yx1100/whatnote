@@ -130,19 +130,19 @@ final class StickyFormattingFooterView: NSView {
         )
         bulletButton = NoteToolButton(
             symbol: "list.bullet",
-            tip: "项目符号列表（⇧⌘7）",
+            tip: "项目符号列表（⌘7）",
             action: #selector(StickyFormattingFooterView.toggleBullet)
         )
         orderedButton = NoteToolButton(
             symbol: "list.number",
             fallbackSymbol: "list.bullet",
-            tip: "编号列表（⇧⌘9）",
+            tip: "编号列表（⌘8）",
             action: #selector(StickyFormattingFooterView.toggleOrdered)
         )
         todoButton = NoteToolButton(
             symbol: "checklist",
             fallbackSymbol: "checkmark.circle",
-            tip: "核对清单（⇧⌘L）",
+            tip: "核对清单（⌘9）",
             action: #selector(StickyFormattingFooterView.toggleTodo)
         )
         dividerButton = NoteToolButton(
@@ -281,18 +281,25 @@ final class StickyTextView: NSTextView {
             onToggleItalic?()
             return true
         }
-        // Apple Notes shortcuts: ⇧⌘7 bulleted list, ⇧⌘9 numbered list, ⇧⌘L checklist, ⇧⌘U mark as checked.
-        if modifiers == [.command, .shift] {
+        // ⌘7 bulleted list, ⌘8 numbered list, ⌘9 checklist, in the order of the footer buttons.
+        if modifiers == [.command] {
             switch key {
-            case "7", "&":
+            case "7":
                 onToggleBulletList?()
                 return true
-            case "9", "(":
+            case "8":
                 onToggleOrderedList?()
                 return true
-            case "l":
+            case "9":
                 onToggleTodo?()
                 return true
+            default:
+                break
+            }
+        }
+        // ⇧⌘U marks checklist items as checked, as in Apple Notes.
+        if modifiers == [.command, .shift] {
+            switch key {
             case "u":
                 onToggleChecked?()
                 return true
