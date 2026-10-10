@@ -824,6 +824,25 @@ enum RichTextFormatting {
 
     /// Code lines always end with their own newline, so the empty line after a block at the
     /// end of the note is plain text. Clicking there must not keep typing in code style.
+    /// An empty line starts in body text even right below a heading, whose font AppKit would
+    /// otherwise carry over; two headings in a row are rare.
+    static func leaveHeadingStyleOnEmptyLine(in textView: NSTextView) {
+        guard let storage = textView.textStorage,
+              headingLevel(of: textView.typingAttributes[.font] as? NSFont) != nil else { return }
+        let selection = textView.selectedRange()
+        guard selection.length == 0 else { return }
+        let string = storage.string as NSString
+        let atEnd = selection.location >= string.length
+        let onEmptyLine = atEnd
+            ? (string.length == 0 || string.character(at: string.length - 1) == 0x0A)
+            : string.character(at: selection.location) == 0x0A
+                && (selection.location == 0 || string.character(at: selection.location - 1) == 0x0A)
+        guard onEmptyLine else { return }
+        var typing = textView.typingAttributes
+        typing[.font] = NoteAppearance.bodyFont()
+        textView.typingAttributes = typing
+    }
+
     static func leaveCodeStyleOnEmptyLastLine(in textView: NSTextView) {
         guard isAtEmptyLastLine(textView),
               CodeBlock.isCodeStyle(textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle) else { return }

@@ -586,7 +586,23 @@ struct RichTextProbe {
         let plainLineAfterList = markerRemoved && plainAfterBackspace && listEnded && plainAfterListEnd
         print("plainLineAfterList backspace=\(markerRemoved && plainAfterBackspace) listEnd=\(listEnded && plainAfterListEnd)")
 
-        let codeBlocks = plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // The empty line right below a heading starts in body text.
+        let belowHeadingEditor = NSTextView()
+        belowHeadingEditor.isRichText = true
+        belowHeadingEditor.textStorage?.setAttributedString(NSAttributedString(
+            string: "标题\n\n正文", attributes: [.font: RichTextFormatting.headingFont(level: 1)]
+        ))
+        belowHeadingEditor.setSelectedRange(NSRange(location: 3, length: 0))
+        belowHeadingEditor.typingAttributes = [.font: RichTextFormatting.headingFont(level: 1)]
+        RichTextFormatting.leaveHeadingStyleOnEmptyLine(in: belowHeadingEditor)
+        let bodyBelowHeading = RichTextFormatting.headingLevel(of: belowHeadingEditor.typingAttributes[.font] as? NSFont) == nil
+        belowHeadingEditor.setSelectedRange(NSRange(location: 1, length: 0))
+        belowHeadingEditor.typingAttributes = [.font: RichTextFormatting.headingFont(level: 1)]
+        RichTextFormatting.leaveHeadingStyleOnEmptyLine(in: belowHeadingEditor)
+        let headingKept = RichTextFormatting.headingLevel(of: belowHeadingEditor.typingAttributes[.font] as? NSFont) == 1
+        print("belowHeading body=\(bodyBelowHeading) headingKept=\(headingKept)")
+
+        let codeBlocks = bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")
