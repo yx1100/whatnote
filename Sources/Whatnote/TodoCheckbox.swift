@@ -47,6 +47,23 @@ enum ListMarker {
         return index - start + 2
     }
 
+    /// Plain text for other apps: checkboxes and bullets become standard Markdown
+    /// ("- [ ] ", "- [x] ", "- "), so Markdown editors recognize them when pasted.
+    static func markdown(from text: String) -> String {
+        let bulletIndent = ["•": "", "∘": "  ", "▪": "    ", "◦": "  ", "○": "  "]
+        return text.components(separatedBy: "\n").map { line -> String in
+            guard line.count >= 2, line.dropFirst().first == " ", let first = line.first else { return line }
+            let rest = line.dropFirst(2)
+            switch first {
+            case "☐": return "- [ ] " + rest
+            case "☑": return "- [x] " + rest
+            default:
+                guard let indent = bulletIndent[String(first)] else { return line }
+                return indent + "- " + rest
+            }
+        }.joined(separator: "\n")
+    }
+
     /// Whether the character at `index` is the space ending a list marker.
     static func isMarkerSpace(in string: NSString, at index: Int) -> Bool {
         guard index > 0, index < string.length, string.character(at: index) == 0x20 else { return false }

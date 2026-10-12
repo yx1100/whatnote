@@ -441,8 +441,11 @@ enum RichTextFormatting {
         if location >= string.length, string.character(at: string.length - 1) == 0x0A { return text }
         let start = string.paragraphRange(for: NSRange(location: min(location, string.length - 1), length: 0)).location
         let pasted = text as NSString
-        guard location > start, let markerLength = ListMarker.length(in: pasted, atParagraphStart: 0) else { return text }
-        let pastesTodo = TodoMarker.isCompleted(in: pasted, at: 0) != nil
+        // A Markdown checklist item copied from here or elsewhere: "- [ ] " or "- [x] ".
+        let markdownTodo = pasted.length >= 6 && ["- [ ] ", "- [x] ", "- [X] "].contains(pasted.substring(to: 6))
+        guard location > start,
+              let markerLength = markdownTodo ? 6 : ListMarker.length(in: pasted, atParagraphStart: 0) else { return text }
+        let pastesTodo = markdownTodo || TodoMarker.isCompleted(in: pasted, at: 0) != nil
         let afterMarker = ListMarker.length(in: string, atParagraphStart: start).map { start + $0 == location } ?? false
         guard pastesTodo || afterMarker else { return text }
         return pasted.substring(from: markerLength)

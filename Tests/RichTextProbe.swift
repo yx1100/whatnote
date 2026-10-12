@@ -566,7 +566,9 @@ struct RichTextProbe {
             && pasted("1. 一", into: "文字", at: 2) == "1. 一"
             && pasted("☐ 随便记", into: "", at: 0) == "☐ 随便记"
             && pasted("☐ 随便记", into: "文字\n", at: 3) == "☐ 随便记"
-        let listMarkers = markerLengths && markerCursor && pasteMarkers
+        let copiedMarkdown = ListMarker.markdown(from: "☐ 买菜\n☑ 写周报\n• 一\n∘ 二\n普通") == "- [ ] 买菜\n- [x] 写周报\n- 一\n  - 二\n普通"
+            && pasted("- [ ] 随便记", into: "☐ ", at: 2) == "随便记"
+        let listMarkers = markerLengths && markerCursor && pasteMarkers && copiedMarkdown
         print("listMarkers lengths=\(markerLengths) cursor=\(markerCursor) paste=\(pasteMarkers)")
 
         // Return on the empty last line below a to-do (its marker just removed, or the list

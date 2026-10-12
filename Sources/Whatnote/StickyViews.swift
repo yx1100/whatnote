@@ -367,6 +367,37 @@ final class StickyTextView: NSTextView {
         super.insertBacktab(sender)
     }
 
+    /// Copies list items as standard Markdown so other apps see checklists and bullets.
+    /// Selections with images keep AppKit's rich copy.
+    override func copy(_ sender: Any?) {
+        guard let markdown = selectionAsMarkdown() else {
+            super.copy(sender)
+            return
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(markdown, forType: .string)
+    }
+
+    override func cut(_ sender: Any?) {
+        guard selectionAsMarkdown() != nil else {
+            super.cut(sender)
+            return
+        }
+        copy(sender)
+        insertText("", replacementRange: selectedRange())
+    }
+
+    private func selectionAsMarkdown() -> String? {
+        let range = selectedRange()
+        guard range.length > 0, let storage = textStorage, NSMaxRange(range) <= storage.length else { return nil }
+        let selected = storage.attributedSubstring(from: range)
+        var hasImage = false
+        selected.enumerateAttribute(.attachment, in: NSRange(location: 0, length: selected.length)) { value, _, stop in
+            if value != nil { hasImage = true; stop.pointee = true }
+        }
+        return hasImage ? nil : ListMarker.markdown(from: selected.string)
+    }
+
     override func paste(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
         let images = NoteImages.images(on: pasteboard)
