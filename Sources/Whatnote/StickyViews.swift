@@ -130,19 +130,19 @@ final class StickyFormattingFooterView: NSView {
         )
         bulletButton = NoteToolButton(
             symbol: "list.bullet",
-            tip: "项目符号列表（⇧⌘7）",
+            tip: "项目符号列表（⌘7）",
             action: #selector(StickyFormattingFooterView.toggleBullet)
         )
         orderedButton = NoteToolButton(
             symbol: "list.number",
             fallbackSymbol: "list.bullet",
-            tip: "编号列表（⇧⌘9）",
+            tip: "编号列表（⌘8）",
             action: #selector(StickyFormattingFooterView.toggleOrdered)
         )
         todoButton = NoteToolButton(
             symbol: "checklist",
             fallbackSymbol: "checkmark.circle",
-            tip: "核对清单（⇧⌘L）",
+            tip: "核对清单（⌘9）",
             action: #selector(StickyFormattingFooterView.toggleTodo)
         )
         dividerButton = NoteToolButton(
@@ -281,18 +281,25 @@ final class StickyTextView: NSTextView {
             onToggleItalic?()
             return true
         }
-        // Apple Notes shortcuts: ⇧⌘7 bulleted list, ⇧⌘9 numbered list, ⇧⌘L checklist, ⇧⌘U mark as checked.
-        if modifiers == [.command, .shift] {
+        // ⌘7 bulleted list, ⌘8 numbered list, ⌘9 checklist, in the order of the footer buttons.
+        if modifiers == [.command] {
             switch key {
-            case "7", "&":
+            case "7":
                 onToggleBulletList?()
                 return true
-            case "9", "(":
+            case "8":
                 onToggleOrderedList?()
                 return true
-            case "l":
+            case "9":
                 onToggleTodo?()
                 return true
+            default:
+                break
+            }
+        }
+        // ⇧⌘U marks checklist items as checked, as in Apple Notes.
+        if modifiers == [.command, .shift] {
+            switch key {
             case "u":
                 onToggleChecked?()
                 return true
@@ -358,6 +365,37 @@ final class StickyTextView: NSTextView {
     override func insertBacktab(_ sender: Any?) {
         if onAdjustBulletLevel?(-1) == true { return }
         super.insertBacktab(sender)
+    }
+
+    /// Copies list items as standard Markdown so other apps see checklists and bullets.
+    /// Selections with images keep AppKit's rich copy.
+    override func copy(_ sender: Any?) {
+        guard let markdown = selectionAsMarkdown() else {
+            super.copy(sender)
+            return
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(markdown, forType: .string)
+    }
+
+    override func cut(_ sender: Any?) {
+        guard selectionAsMarkdown() != nil else {
+            super.cut(sender)
+            return
+        }
+        copy(sender)
+        insertText("", replacementRange: selectedRange())
+    }
+
+    private func selectionAsMarkdown() -> String? {
+        let range = selectedRange()
+        guard range.length > 0, let storage = textStorage, NSMaxRange(range) <= storage.length else { return nil }
+        let selected = storage.attributedSubstring(from: range)
+        var hasImage = false
+        selected.enumerateAttribute(.attachment, in: NSRange(location: 0, length: selected.length)) { value, _, stop in
+            if value != nil { hasImage = true; stop.pointee = true }
+        }
+        return hasImage ? nil : ListMarker.markdown(from: selected.string)
     }
 
     override func paste(_ sender: Any?) {

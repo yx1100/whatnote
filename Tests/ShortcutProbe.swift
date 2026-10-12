@@ -35,11 +35,11 @@ struct ShortcutProbe {
         let bold = keyEvent(modifiers: [.command], characters: "b", ignoringModifiers: "b")
         _ = editor.performKeyEquivalent(with: bold)
 
-        // Apple Notes layout: ⇧⌘7 bulleted, ⇧⌘9 numbered, ⇧⌘L checklist, ⇧⌘U mark as checked, ⌘I italic.
-        let bullet = keyEvent(modifiers: [.command, .shift], characters: "&", ignoringModifiers: "&")
+        // ⌘7 bulleted, ⌘8 numbered, ⌘9 checklist, ⇧⌘U mark as checked, ⌘I italic.
+        let bullet = keyEvent(modifiers: [.command], characters: "7", ignoringModifiers: "7")
         _ = editor.performKeyEquivalent(with: bullet)
 
-        let todo = keyEvent(modifiers: [.command, .shift], characters: "L", ignoringModifiers: "L")
+        let todo = keyEvent(modifiers: [.command], characters: "9", ignoringModifiers: "9")
         _ = editor.performKeyEquivalent(with: todo)
 
         let checked = keyEvent(modifiers: [.command, .shift], characters: "U", ignoringModifiers: "U")
@@ -48,13 +48,16 @@ struct ShortcutProbe {
         let italic = keyEvent(modifiers: [.command], characters: "i", ignoringModifiers: "i")
         _ = editor.performKeyEquivalent(with: italic)
 
+        // The former ⇧⌘7 and ⇧⌘L no longer do anything.
+        _ = editor.performKeyEquivalent(with: keyEvent(modifiers: [.command, .shift], characters: "&", ignoringModifiers: "&"))
+        _ = editor.performKeyEquivalent(with: keyEvent(modifiers: [.command, .shift], characters: "L", ignoringModifiers: "L"))
         let oldTodo = keyEvent(modifiers: [.command, .shift], characters: "X", ignoringModifiers: "X")
         _ = editor.performKeyEquivalent(with: oldTodo)
 
         let link = keyEvent(modifiers: [.command], characters: "k", ignoringModifiers: "k")
         _ = editor.performKeyEquivalent(with: link)
 
-        let ordered = keyEvent(modifiers: [.command, .shift], characters: "(", ignoringModifiers: "(")
+        let ordered = keyEvent(modifiers: [.command], characters: "8", ignoringModifiers: "8")
         _ = editor.performKeyEquivalent(with: ordered)
 
         editor.insertTab(nil)
