@@ -76,6 +76,13 @@ struct WindowLayoutProbe {
         guard usable == NSRect(x: 36, y: 0, width: 1337, height: 875) else { exit(13) }
         guard NoteWindowLayout.usableFrame(in: visible, avoiding: []) == visible else { exit(14) }
 
+        // A note on a display to the left of the Mac's (such as an iPad with Sidecar) stays there.
+        let displays = [NSRect(x: 0, y: 0, width: 1440, height: 900), NSRect(x: -1180, y: 0, width: 1180, height: 820)]
+        guard NoteWindowLayout.screenIndex(for: NSRect(x: -900, y: 300, width: 340, height: 260), among: displays) == 1,
+              NoteWindowLayout.screenIndex(for: NSRect(x: -100, y: 300, width: 340, height: 260), among: displays) == 0,
+              NoteWindowLayout.screenIndex(for: NSRect(x: 5000, y: 300, width: 340, height: 260), among: displays) == nil
+        else { exit(15) }
+
         print("window layout: pass")
     }
 }

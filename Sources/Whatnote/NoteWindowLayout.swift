@@ -1,6 +1,16 @@
 import AppKit
 
 enum NoteWindowLayout {
+    /// The display showing most of `frame`, or nil when it is on none of them.
+    static func screenIndex(for frame: NSRect, among screens: [NSRect]) -> Int? {
+        let areas = screens.map { screen -> CGFloat in
+            let overlap = screen.intersection(frame)
+            return overlap.isNull ? 0 : overlap.width * overlap.height
+        }
+        guard let best = areas.indices.max(by: { areas[$0] < areas[$1] }), areas[best] > 0 else { return nil }
+        return best
+    }
+
     /// The part of `visibleFrame` left free by other apps' UI along its left, right and bottom
     /// edges, such as a Dock or a floating panel. Only strips that hug an edge count; ordinary
     /// windows and small banners do not shrink the area.
