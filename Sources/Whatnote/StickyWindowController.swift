@@ -317,6 +317,9 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         NoteStore.shared.update(note)
     }
 
+    /// Where the note is shown, including a pinned note's all-desktops window.
+    var displayedFrame: NSRect { windowResidency.activeWindow.frame }
+
     func arrangeOnDesktop(to frame: NSRect) {
         guard let window else { return }
         let wasPinned = note.isPinned

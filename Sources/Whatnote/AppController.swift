@@ -99,7 +99,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         // notes on no display go to the main one.
         var groups: [Int: [StickyNote]] = [:]
         for note in notes {
-            let frame = controllers[note.id]?.window?.frame ?? note.frame.rect
+            let frame = controllers[note.id]?.displayedFrame ?? note.frame.rect
             let index = NoteWindowLayout.screenIndex(for: frame, among: screens.map(\.frame))
                 ?? screens.firstIndex(of: mainScreen) ?? 0
             groups[index, default: []].append(note)
