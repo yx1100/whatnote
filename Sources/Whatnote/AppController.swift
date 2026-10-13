@@ -92,15 +92,26 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
                 if $0.createdAt == $1.createdAt { return $0.id.uuidString < $1.id.uuidString }
                 return $0.createdAt < $1.createdAt
             }
-        guard !notes.isEmpty,
-              let screen = NSScreen.screens.first(where: { $0.frame.origin == .zero }) ?? NSScreen.screens.first else { return }
+        let screens = NSScreen.screens
+        guard !notes.isEmpty, let mainScreen = screens.first(where: { $0.frame.origin == .zero }) ?? screens.first else { return }
 
-        // Keep clear of the Dock and other apps' UI along the screen edges.
-        let visibleFrame = screen.visibleFrame
-        let edgeWindows = OtherAppsUI.edgeWindows(near: visibleFrame)
-        Task { @MainActor [weak self] in
-            let obstacles = await OtherAppsUI.visibleFrames(of: edgeWindows)
-            self?.layOut(notes, in: NoteWindowLayout.usableFrame(in: visibleFrame, avoiding: obstacles))
+        // Each note is arranged on the display it is on (for example an iPad used with Sidecar);
+        // notes on no display go to the main one.
+        var groups: [Int: [StickyNote]] = [:]
+        for note in notes {
+            let frame = controllers[note.id]?.displayedFrame ?? note.frame.rect
+            let index = NoteWindowLayout.screenIndex(for: frame, among: screens.map(\.frame))
+                ?? screens.firstIndex(of: mainScreen) ?? 0
+            groups[index, default: []].append(note)
+        }
+        for (index, group) in groups {
+            // Keep clear of the Dock and other apps' UI along the screen edges.
+            let visibleFrame = screens[index].visibleFrame
+            let edgeWindows = OtherAppsUI.edgeWindows(near: visibleFrame)
+            Task { @MainActor [weak self] in
+                let obstacles = await OtherAppsUI.visibleFrames(of: edgeWindows)
+                self?.layOut(group, in: NoteWindowLayout.usableFrame(in: visibleFrame, avoiding: obstacles))
+            }
         }
     }
 
