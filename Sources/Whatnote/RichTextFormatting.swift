@@ -713,6 +713,12 @@ enum RichTextFormatting {
         let originalTypingAttributes = textView.typingAttributes
         var headingTypingFont: NSFont?
         var changed = false
+        // Text typed without a font (AppKit's small default) gets the body font.
+        if NoteAppearance.repairFonts(in: storage) {
+            var typing = textView.typingAttributes
+            typing[.font] = NoteAppearance.noteFont(typing[.font] as? NSFont)
+            textView.typingAttributes = typing
+        }
 
         // Markdown inside code blocks stays as typed.
         func matches(_ pattern: String) -> [NSTextCheckingResult] {

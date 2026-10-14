@@ -216,6 +216,17 @@ enum StickyEditingShortcut: Equatable {
 }
 
 final class StickyTextView: NSTextView {
+    /// Typed text always gets a note font. Without one AppKit falls back to its small default,
+    /// which shows up as small Latin letters while input methods (Chinese) still look right.
+    override var typingAttributes: [NSAttributedString.Key: Any] {
+        get { super.typingAttributes }
+        set {
+            var attributes = newValue
+            attributes[.font] = NoteAppearance.noteFont(attributes[.font] as? NSFont)
+            super.typingAttributes = attributes
+        }
+    }
+
     var onToggleBold: (() -> Void)?
     var onToggleItalic: (() -> Void)?
     var onToggleChecked: (() -> Void)?
@@ -538,6 +549,7 @@ final class StickyRootView: NSView {
             textView.textStorage?.setAttributedString(restored)
             if let storage = textView.textStorage {
                 NoteAppearance.upgradeLegacyFontSizes(in: storage)
+                NoteAppearance.repairFonts(in: storage)
                 NoteImages.fitAttachments(in: storage)
             }
         } else {

@@ -21,6 +21,24 @@ enum NoteAppearance {
         NSFont.systemFont(ofSize: bodyFontSize, weight: weight)
     }
 
+    /// The font to type or show text in: `font`, unless it is missing or AppKit's small default
+    /// (every note font is at least 15 pt), in which case the body font.
+    static func noteFont(_ font: NSFont?) -> NSFont {
+        guard let font, font.pointSize >= 13 else { return bodyFont() }
+        return font
+    }
+
+    /// Gives text without a note font the body font. Returns whether anything changed.
+    @discardableResult
+    static func repairFonts(in text: NSMutableAttributedString) -> Bool {
+        var repairs: [NSRange] = []
+        text.enumerateAttribute(.font, in: NSRange(location: 0, length: text.length)) { value, range, _ in
+            if noteFont(value as? NSFont) !== value as? NSFont { repairs.append(range) }
+        }
+        for range in repairs { text.addAttribute(.font, value: bodyFont(), range: range) }
+        return !repairs.isEmpty
+    }
+
     /// Line and paragraph spacing, applied by the note's layout manager to every paragraph.
     static let lineSpacing: CGFloat = 3
     static let paragraphSpacing: CGFloat = 8

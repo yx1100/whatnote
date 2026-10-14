@@ -640,7 +640,18 @@ struct RichTextProbe {
         let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && switchedType && nestedMarkdown
         print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) switch=\(switchedType) markdown=\(nestedMarkdown)")
 
-        let codeBlocks = nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // Text that came in without a font (AppKit's small default) gets the body font back.
+        let fontlessEditor = NSTextView()
+        fontlessEditor.isRichText = true
+        fontlessEditor.textStorage?.setAttributedString(NSAttributedString(string: "abc"))
+        fontlessEditor.textStorage?.addAttribute(.font, value: NSFont.systemFont(ofSize: 12), range: NSRange(location: 1, length: 1))
+        RichTextFormatting.applyMarkdownSyntax(in: fontlessEditor)
+        let fontsRepaired = (0..<3).allSatisfy {
+            (fontlessEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)?.pointSize == NoteAppearance.bodyFontSize
+        }
+        print("fontsRepaired=\(fontsRepaired)")
+
+        let codeBlocks = fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")
