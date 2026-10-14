@@ -40,28 +40,55 @@ enum ListMarker {
         if start + 1 < string.length, symbols.contains(string.character(at: start)), string.character(at: start + 1) == 0x20 {
             return 2
         }
+        // "12. " or, nested, "1.2. ".
         var index = start
-        while index < string.length, index - start < 4, (0x30...0x39).contains(string.character(at: index)) { index += 1 }
-        guard index > start, index + 1 < string.length,
-              string.character(at: index) == 0x2E, string.character(at: index + 1) == 0x20 else { return nil }
-        return index - start + 2
+        while true {
+            let groupStart = index
+            while index < string.length, index - groupStart < 4, (0x30...0x39).contains(string.character(at: index)) { index += 1 }
+            guard index > groupStart, index < string.length, string.character(at: index) == 0x2E else { return nil }
+            index += 1
+            guard index < string.length else { return nil }
+            if string.character(at: index) == 0x20 { return index - start + 1 }
+        }
     }
 
-    /// Plain text for other apps: checkboxes and bullets become standard Markdown
-    /// ("- [ ] ", "- [x] ", "- "), so Markdown editors recognize them when pasted.
-    static func markdown(from text: String) -> String {
+    /// Plain text for other apps: checkboxes, bullets and nested numbers become standard
+    /// Markdown ("- [ ] ", "- [x] ", "- ", indented "1. "), so Markdown editors recognize them.
+    /// `todoLevels` gives each line's checklist indent level, where known.
+    static func markdown(from text: String, todoLevels: [Int] = []) -> String {
         let bulletIndent = ["•": "", "∘": "  ", "▪": "    ", "◦": "  ", "○": "  "]
-        return text.components(separatedBy: "\n").map { line -> String in
+        return text.components(separatedBy: "\n").enumerated().map { index, line -> String in
+            if let number = line.range(of: #"^\d{1,4}(?:\.\d{1,4})+\. "#, options: .regularExpression) {
+                let parts = line[number].dropLast(2).split(separator: ".")
+                return String(repeating: "   ", count: parts.count - 1) + "\(parts.last ?? "1"). " + line[number.upperBound...]
+            }
             guard line.count >= 2, line.dropFirst().first == " ", let first = line.first else { return line }
             let rest = line.dropFirst(2)
+            let todoIndent = String(repeating: "  ", count: index < todoLevels.count ? todoLevels[index] : 0)
             switch first {
-            case "☐": return "- [ ] " + rest
-            case "☑": return "- [x] " + rest
+            case "☐": return todoIndent + "- [ ] " + rest
+            case "☑": return todoIndent + "- [x] " + rest
             default:
                 guard let indent = bulletIndent[String(first)] else { return line }
                 return indent + "- " + rest
             }
         }.joined(separator: "\n")
+    }
+
+    /// Markdown for copied rich text; checklist indents come from the paragraph styles.
+    static func markdown(from text: NSAttributedString, indentStep: CGFloat = 18) -> String {
+        let string = text.string as NSString
+        var levels: [Int] = []
+        var location = 0
+        repeat {
+            let paragraph = string.paragraphRange(for: NSRange(location: min(location, max(0, string.length - 1)), length: 0))
+            let style = string.length > 0
+                ? text.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle
+                : nil
+            levels.append(max(0, Int(round((style?.firstLineHeadIndent ?? 0) / indentStep))))
+            location = NSMaxRange(paragraph)
+        } while location < string.length
+        return markdown(from: text.string, todoLevels: levels)
     }
 
     /// Whether the character at `index` is the space ending a list marker.

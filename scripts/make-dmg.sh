@@ -9,8 +9,8 @@ if [ -z "$version" ]; then
   echo "usage: $0 <version>" >&2
   exit 1
 fi
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "version must use numeric SemVer (X.Y.Z): $version" >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+  echo "version must be numeric (X.Y or X.Y.Z): $version" >&2
   exit 1
 fi
 if [ ! -d "$app" ]; then

@@ -196,10 +196,15 @@ final class PreferencesViewController: NSViewController {
         launchRow.alignment = .centerY
         launchRow.spacing = 10
 
+        let version = NSTextField(labelWithString: Self.versionText)
+        version.font = .systemFont(ofSize: 11)
+        version.textColor = .tertiaryLabelColor
+        version.isHidden = Self.versionText.isEmpty
+
         let content = NSStackView(views: [
             shortcutRow, statusLabel, separator,
             doubleEscapeCheckbox, commandWCheckbox, secondSeparator,
-            launchRow, launchHint
+            launchRow, launchHint, version
         ])
         content.frame = NSRect(x: 0, y: 0, width: 360, height: 240)
         content.orientation = .vertical
@@ -253,6 +258,12 @@ final class PreferencesViewController: NSViewController {
     @objc private func toggleLaunchAtLogin() {
         let error = LaunchAtLogin.setEnabled(launchCheckbox.state == .on)
         refreshLaunchAtLogin(error: error)
+    }
+
+    /// "随便记 1.1", from the app's version; empty when it has none (e.g. in tests).
+    static var versionText: String {
+        guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return "" }
+        return "随便记 \(version)"
     }
 
     private func refreshCloseOptions() {

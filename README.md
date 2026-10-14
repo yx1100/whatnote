@@ -53,7 +53,8 @@
 | 分隔线 | — | 单独一行 `---` |
 | 代码块 | — | 单独一行 ```` ``` ```` 后回车 |
 
-- 列表中回车继续下一项，空项上回车结束列表
+- 列表中回车继续下一项，空项上回车结束列表；在空项的符号后输入另一种列表的 Markdown，即换成那种列表
+- 各种列表都可用 `Tab` 缩进：编号列表缩进为 1.1.、1.1.1.
 - 代码块中回车在块内换行；单独一行 ```` ``` ```` 后回车或点代码块按钮结束
 - 关闭便签即“完成”，便签移到“已完成的便签”
 - 在“已完成的便签”中，鼠标停在一条上显示完整内容；恢复或删除（在删除按钮旁确认）后列表保持打开，可接着处理下一条
@@ -84,8 +85,8 @@ for test_script in scripts/test-*.sh; do "$test_script"; done
 生成 DMG：
 
 ```bash
-MARKETING_VERSION=1.3.0 BUILD_NUMBER=6 ./scripts/build-app.sh
-./scripts/make-dmg.sh 1.3.0
+MARKETING_VERSION=1.1 BUILD_NUMBER=6 ./scripts/build-app.sh
+./scripts/make-dmg.sh 1.1
 ```
 
 ## 许可证

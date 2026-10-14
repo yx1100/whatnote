@@ -395,7 +395,21 @@ final class StickyTextView: NSTextView {
         selected.enumerateAttribute(.attachment, in: NSRange(location: 0, length: selected.length)) { value, _, stop in
             if value != nil { hasImage = true; stop.pointee = true }
         }
-        return hasImage ? nil : ListMarker.markdown(from: selected.string)
+        return hasImage ? nil : ListMarker.markdown(from: selected)
+    }
+
+    /// Dragging a selection leftward past a list item's text takes its whole marker at once,
+    /// rather than first the gap between marker and text (as ⇧⌘← does from the keyboard).
+    override func selectionRange(forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity) -> NSRange {
+        let range = super.selectionRange(forProposedRange: proposedCharRange, granularity: granularity)
+        let isMouse = NSApp?.currentEvent.map { [.leftMouseDown, .leftMouseDragged, .leftMouseUp].contains($0.type) } ?? false
+        guard isMouse, range.length > 0, let storage = textStorage, range.location < storage.length else { return range }
+        let string = storage.string as NSString
+        let start = string.paragraphRange(for: NSRange(location: range.location, length: 0)).location
+        guard range.location > start,
+              let markerLength = ListMarker.length(in: string, atParagraphStart: start),
+              range.location < start + markerLength else { return range }
+        return NSRange(location: start, length: NSMaxRange(range) - start)
     }
 
     override func paste(_ sender: Any?) {

@@ -607,7 +607,40 @@ struct RichTextProbe {
         let headingKept = RichTextFormatting.headingLevel(of: belowHeadingEditor.typingAttributes[.font] as? NSFont) == 1
         print("belowHeading body=\(bodyBelowHeading) headingKept=\(headingKept)")
 
-        let codeBlocks = bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // Numbered items nest as "1.1. " with Tab and come back with ⇧Tab; Return continues the level.
+        let nestedEditor = NSTextView()
+        nestedEditor.isRichText = true
+        nestedEditor.string = "1. 一\n2. 二\n3. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 7, length: 0))
+        let nestedIn = RichTextFormatting.adjustBulletLevel(in: nestedEditor, delta: 1)
+            && nestedEditor.string == "1. 一\n1.1. 二\n2. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 11, length: 0))
+        let nestedReturn = RichTextFormatting.handleStructuredNewline(in: nestedEditor)
+            && nestedEditor.string == "1. 一\n1.1. 二\n1.2. \n2. 三"
+        nestedEditor.string = "1. 一\n1.1. 二\n2. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 9, length: 0))
+        let nestedOut = RichTextFormatting.adjustBulletLevel(in: nestedEditor, delta: -1)
+            && nestedEditor.string == "1. 一\n2. 二\n3. 三"
+        // Checklist items indent too, but never deeper than one level below the item above.
+        let todoIndentEditor = NSTextView()
+        todoIndentEditor.isRichText = true
+        todoIndentEditor.string = "☐ 甲\n☐ 乙"
+        todoIndentEditor.setSelectedRange(NSRange(location: 0, length: 0))
+        let firstTodoStays = !RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
+        todoIndentEditor.setSelectedRange(NSRange(location: 5, length: 0))
+        let secondTodoIndents = RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
+            && (todoIndentEditor.textStorage?.attribute(.paragraphStyle, at: 4, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        // An empty item takes the type of the list Markdown typed after its marker.
+        let switchedType = convertedEditor("• 1. ").string == "1. "
+            && convertedEditor("1. [] ").string == "☐ "
+            && convertedEditor("☐ - ").string == "• "
+            && convertedEditor("• 【】 ").string == "☐ "
+        let nestedMarkdown = ListMarker.length(in: "1.2. 项", atParagraphStart: 0) == 5
+            && ListMarker.markdown(from: "1. 一\n1.1. 二") == "1. 一\n   1. 二"
+        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && switchedType && nestedMarkdown
+        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) switch=\(switchedType) markdown=\(nestedMarkdown)")
+
+        let codeBlocks = nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

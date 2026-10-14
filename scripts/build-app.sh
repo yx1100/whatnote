@@ -5,8 +5,8 @@ project_dir="${0:A:h:h}"
 configuration="${1:-release}"
 app_dir="$project_dir/dist/Whatnote.app"
 contents_dir="$app_dir/Contents"
-marketing_version="${MARKETING_VERSION:-1.2.2}"
-build_number="${BUILD_NUMBER:-5}"
+marketing_version="${MARKETING_VERSION:-1.1}"
+build_number="${BUILD_NUMBER:-6}"
 bundle_identifier="${BUNDLE_IDENTIFIER:-com.yx1100.whatnote}"
 # A self-signed certificate named "Whatnote Local Signing" in the login keychain gives every
 # build the same identity, so macOS keeps permissions such as Screen Recording across builds.
@@ -16,8 +16,8 @@ if [[ -z "${CODESIGN_IDENTITY:-}" ]] && security find-certificate -c "$local_ide
 fi
 codesign_identity="${CODESIGN_IDENTITY:--}"
 
-if [[ ! "$marketing_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
-  print -u2 "MARKETING_VERSION must use numeric SemVer (X.Y.Z): $marketing_version"
+if [[ ! "$marketing_version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' ]]; then
+  print -u2 "MARKETING_VERSION must be numeric (X.Y or X.Y.Z): $marketing_version"
   exit 1
 fi
 if [[ ! "$build_number" =~ '^[0-9]+$' ]]; then
