@@ -206,7 +206,7 @@ final class PreferencesViewController: NSViewController {
             doubleEscapeCheckbox, commandWCheckbox, secondSeparator,
             launchRow, launchHint, version
         ])
-        content.frame = NSRect(x: 0, y: 0, width: 360, height: 240)
+        content.frame = NSRect(x: 0, y: 0, width: 360, height: 262)
         content.orientation = .vertical
         content.alignment = .leading
         content.spacing = 10
