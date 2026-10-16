@@ -344,6 +344,20 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         return ListMarker.isMarkerSpace(in: string, at: charIndex) && !CodeBlock.isCodeLine(in: storage, at: charIndex)
     }
 
+    /// A list item's first word stays on the item's first line, breaking inside the word when it
+    /// is longer than the line, instead of jumping down and leaving the marker alone.
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldBreakLineByWordBeforeCharacterAt charIndex: Int
+    ) -> Bool {
+        guard let storage = layoutManager.textStorage, charIndex > 0, charIndex < storage.length else { return true }
+        let string = storage.string as NSString
+        let start = string.paragraphRange(for: NSRange(location: charIndex, length: 0)).location
+        guard start < charIndex, let markerLength = ListMarker.length(in: string, atParagraphStart: start),
+              start + markerLength == charIndex else { return true }
+        return false
+    }
+
     func layoutManager(
         _ layoutManager: NSLayoutManager,
         shouldUse action: NSLayoutManager.ControlCharacterAction,

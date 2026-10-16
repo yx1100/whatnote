@@ -1238,6 +1238,44 @@ enum RichTextFormatting {
         textView.typingAttributes = typing
     }
 
+    /// Makes the wrapped lines of every list item start where the item's text starts, that is
+    /// after the marker and its gap. The marker's width depends on the symbol, the number and
+    /// the font, so a fixed indent only lines up by chance. Returns whether anything changed.
+    @discardableResult
+    static func alignListContinuationLines(in storage: NSTextStorage) -> Bool {
+        let string = storage.string as NSString
+        var changes: [(range: NSRange, style: NSParagraphStyle)] = []
+        var location = 0
+        while location < string.length {
+            let paragraph = string.paragraphRange(for: NSRange(location: location, length: 0))
+            location = NSMaxRange(paragraph)
+            guard !CodeBlock.isCodeLine(in: storage, at: paragraph.location),
+                  let markerLength = ListMarker.length(in: string, atParagraphStart: paragraph.location),
+                  let style = storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle
+            else { continue }
+            let font = storage.attribute(.font, at: paragraph.location, effectiveRange: nil) as? NSFont
+                ?? NoteAppearance.bodyFont()
+            let symbol = string.character(at: paragraph.location)
+            let markerWidth: CGFloat
+            if symbol == 0x2610 || symbol == 0x2611 {
+                markerWidth = TodoCheckbox.markerWidth(for: font)
+            } else {
+                let marker = string.substring(with: NSRange(location: paragraph.location, length: markerLength - 1))
+                markerWidth = (marker as NSString).size(withAttributes: [.font: font]).width
+            }
+            let indent = (style.firstLineHeadIndent + markerWidth + ListMarker.spacing).rounded()
+            guard abs(style.headIndent - indent) >= 0.5,
+                  let aligned = style.mutableCopy() as? NSMutableParagraphStyle else { continue }
+            aligned.headIndent = indent
+            changes.append((paragraph, aligned))
+        }
+        guard !changes.isEmpty else { return false }
+        storage.beginEditing()
+        for change in changes { storage.addAttribute(.paragraphStyle, value: change.style, range: change.range) }
+        storage.endEditing()
+        return true
+    }
+
     private static func adjustSelection(location: inout Int, length: inout Int, changeAt: Int, delta: Int) {
         let originalLocation = location
         let originalEnd = location + length

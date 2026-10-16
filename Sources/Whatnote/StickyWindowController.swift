@@ -64,13 +64,16 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         }
         let repairedBullets = RichTextFormatting.normalizeBulletMarkers(in: rootView.textView)
         let repairedTodos = RichTextFormatting.normalizeTodoMarkers(in: rootView.textView)
-        if repairedBullets || repairedTodos {
+        let alignedLists = rootView.textView.textStorage.map(RichTextFormatting.alignListContinuationLines) ?? false
+        if repairedBullets || repairedTodos || alignedLists {
             self.note.text = rootView.textView.string
             self.note.richTextData = rootView.textView.textStorage.flatMap(RichTextCodec.encode)
             NoteStore.shared.update(self.note)
         }
         applyPinState()
         updateFormattingState()
+        // A note saved shorter than its text stays that size when edited.
+        DispatchQueue.main.async { [weak self] in self?.updateGrowsWithText() }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -119,6 +122,15 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     func windowDidMove(_ notification: Notification) { saveFrame() }
     func windowDidResize(_ notification: Notification) { saveFrame() }
 
+    /// Dragging the note shorter than its text means the user wants it small; typing must not
+    /// stretch it again. Making it tall enough for the text hands the sizing back.
+    func windowDidEndLiveResize(_ notification: Notification) { updateGrowsWithText() }
+
+    private func updateGrowsWithText() {
+        guard let needed = heightFittingText() else { return }
+        growsWithText = windowResidency.activeWindow.frame.height >= needed - 0.5
+    }
+
     func windowDidResignKey(_ notification: Notification) {
         // Unpinned notes use the normal macOS window ordering. Losing keyboard
         // focus must not force the note behind every other window.
@@ -130,6 +142,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
             _ = RichTextFormatting.applyMarkdownSyntax(in: rootView.textView)
             isApplyingMarkdown = false
         }
+        RichTextFormatting.alignListContinuationLines(in: rootView.textView.textStorage ?? NSTextStorage())
         persistText()
         updateFormattingState()
         growToFitText()
@@ -367,6 +380,9 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
 
     /// The window height that shows all of the text between the two bars, plus one empty
     /// line of room below it.
+    /// False once the user has made the note shorter than its text.
+    private var growsWithText = true
+
     private func heightFittingText() -> CGFloat? {
         let textView = rootView.textView
         guard let layoutManager = textView.layoutManager, let container = textView.textContainer else { return nil }
@@ -379,7 +395,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     /// Extends the note downward while its text needs more room, keeping the top edge in place,
     /// until the bottom reaches the edge of the screen. It never shrinks the note.
     private func growToFitText() {
-        guard let needed = heightFittingText(), needed > windowResidency.activeWindow.frame.height + 0.5 else { return }
+        guard growsWithText, let needed = heightFittingText(), needed > windowResidency.activeWindow.frame.height + 0.5 else { return }
         setHeight(needed, animate: false)
     }
 
@@ -387,6 +403,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     /// shorter, keeping the top edge in place.
     func fitHeightToText() {
         guard let needed = heightFittingText() else { return }
+        growsWithText = true
         setHeight(max(needed, NoteAppearance.minimumSize.height), animate: true)
     }
 

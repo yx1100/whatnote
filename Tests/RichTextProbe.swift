@@ -651,7 +651,27 @@ struct RichTextProbe {
         }
         print("fontsRepaired=\(fontsRepaired)")
 
-        let codeBlocks = fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // Wrapped lines of a list item start where its text starts, whatever the marker's width.
+        let wrapStorage = NSTextStorage(
+            string: "• 甲\n10. 乙\n☐ 丙\n普通",
+            attributes: [.font: NoteAppearance.bodyFont(), .paragraphStyle: NSParagraphStyle.default]
+        )
+        let wrapChanged = RichTextFormatting.alignListContinuationLines(in: wrapStorage)
+        func hang(_ index: Int) -> CGFloat {
+            (wrapStorage.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle)?.headIndent ?? -1
+        }
+        let bulletWidth = ("•" as NSString).size(withAttributes: [.font: NoteAppearance.bodyFont()]).width
+        let numberWidth = ("10." as NSString).size(withAttributes: [.font: NoteAppearance.bodyFont()]).width
+        let hangsAligned = wrapChanged
+            && hang(0) == (bulletWidth + ListMarker.spacing).rounded()
+            && hang(5) == (numberWidth + ListMarker.spacing).rounded()
+            && hang(5) > hang(0)
+            && hang(11) == (TodoCheckbox.markerWidth(for: NoteAppearance.bodyFont()) + ListMarker.spacing).rounded()
+            && hang(15) == 0
+            && !RichTextFormatting.alignListContinuationLines(in: wrapStorage)
+        print("hangsAligned=\(hangsAligned)")
+
+        let codeBlocks = hangsAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

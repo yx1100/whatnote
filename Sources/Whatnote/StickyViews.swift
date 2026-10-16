@@ -130,19 +130,19 @@ final class StickyFormattingFooterView: NSView {
         )
         bulletButton = NoteToolButton(
             symbol: "list.bullet",
-            tip: "项目符号列表（⌘7）",
+            tip: "无序列表（⌘7）",
             action: #selector(StickyFormattingFooterView.toggleBullet)
         )
         orderedButton = NoteToolButton(
             symbol: "list.number",
             fallbackSymbol: "list.bullet",
-            tip: "编号列表（⌘8）",
+            tip: "有序列表（⌘8）",
             action: #selector(StickyFormattingFooterView.toggleOrdered)
         )
         todoButton = NoteToolButton(
             symbol: "checklist",
             fallbackSymbol: "checkmark.circle",
-            tip: "核对清单（⌘9）",
+            tip: "任务列表（⌘9）",
             action: #selector(StickyFormattingFooterView.toggleTodo)
         )
         dividerButton = NoteToolButton(
