@@ -5,8 +5,8 @@ project_dir="${0:A:h:h}"
 configuration="${1:-release}"
 app_dir="$project_dir/dist/Whatnote.app"
 contents_dir="$app_dir/Contents"
-marketing_version="${MARKETING_VERSION:-1.1}"
-build_number="${BUILD_NUMBER:-6}"
+marketing_version="${MARKETING_VERSION:-1.3}"
+build_number="${BUILD_NUMBER:-7}"
 bundle_identifier="${BUNDLE_IDENTIFIER:-com.yx1100.whatnote}"
 # A self-signed certificate named "Whatnote Local Signing" in the login keychain gives every
 # build the same identity, so macOS keeps permissions such as Screen Recording across builds.
