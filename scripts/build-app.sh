@@ -46,23 +46,20 @@ swift build -c "$configuration" --arch arm64
 binary_path="$(swift build -c "$configuration" --arch arm64 --show-bin-path)/Whatnote"
 cp "$binary_path" "$contents_dir/MacOS/Whatnote"
 
-# App icon: a light and a dark variant. The .icns (light) works everywhere;
-# with full Xcode installed, an asset catalog adds the dark variant so the icon
+# App icon: Assets/Whatnote-light.icns and Assets/Whatnote-dark.icns. The light .icns works
+# everywhere; with full Xcode installed, an asset catalog adds the dark variant so the icon
 # follows the system appearance in Finder, Launchpad and System Settings.
 icon_root="$project_dir/.build/icon"
 rm -rf "$icon_root"
 mkdir -p "$icon_root"
-swift "$project_dir/Tools/GenerateIcon.swift" "$icon_root/light.png" light
-swift "$project_dir/Tools/GenerateIcon.swift" "$icon_root/dark.png" dark
-
-icon_work="$icon_root/Whatnote.iconset"
-mkdir -p "$icon_work"
-for spec in "16 16x16" "32 16x16@2x" "32 32x32" "64 32x32@2x" "128 128x128" "256 128x128@2x" "256 256x256" "512 256x256@2x" "512 512x512" "1024 512x512@2x"; do
-  pixels="${spec%% *}"
-  filename="${spec#* }"
-  sips -z "$pixels" "$pixels" "$icon_root/light.png" --out "$icon_work/icon_$filename.png" >/dev/null
+cp "$project_dir/Assets/Whatnote-light.icns" "$contents_dir/Resources/Whatnote.icns"
+# The catalog is built from each icon's largest picture.
+for appearance in light dark; do
+  iconutil -c iconset "$project_dir/Assets/Whatnote-$appearance.icns" -o "$icon_root/$appearance.iconset"
+  master="$icon_root/$appearance.iconset/icon_512x512@2x.png"
+  [[ -f "$master" ]] || master="$icon_root/$appearance.iconset/icon_512x512.png"
+  cp "$master" "$icon_root/$appearance.png"
 done
-iconutil -c icns "$icon_work" -o "$contents_dir/Resources/Whatnote.icns"
 
 has_icon_catalog=false
 if xcrun --find actool >/dev/null 2>&1; then
