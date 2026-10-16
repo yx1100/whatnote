@@ -140,7 +140,7 @@ final class PreferencesViewController: NSViewController {
         refreshLaunchAtLogin(error: error)
     }
 
-    /// "随便记 1.3.0", from the app's version; empty when it has none (e.g. in tests).
+    /// "随便记 1.3.1", from the app's version; empty when it has none (e.g. in tests).
     static var versionText: String {
         guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return "" }
         return "随便记 \(version)"
