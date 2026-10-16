@@ -76,6 +76,8 @@ cd whatnote
 open dist/Whatnote.app
 ```
 
+重新构建时，脚本会先退出正在运行的 `dist/Whatnote.app`，再打包，所以 `open` 打开的总是新版本。
+
 运行检查：
 
 ```bash

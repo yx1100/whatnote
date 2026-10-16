@@ -26,6 +26,18 @@ if [[ ! "$build_number" =~ '^[0-9]+$' ]]; then
 fi
 
 cd "$project_dir"
+# A running copy of this build would stay in front of the new one: `open` only brings an
+# already running app forward. Quit it first (notes are saved as they change).
+running_binary="$contents_dir/MacOS/Whatnote"
+if pgrep -f "$running_binary" >/dev/null 2>&1; then
+  print "Quitting the running Whatnote from $app_dir"
+  pkill -TERM -f "$running_binary" || true
+  for _ in {1..30}; do
+    pgrep -f "$running_binary" >/dev/null 2>&1 || break
+    sleep 0.1
+  done
+  pkill -KILL -f "$running_binary" 2>/dev/null || true
+fi
 rm -rf "$app_dir"
 mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"
 
