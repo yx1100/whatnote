@@ -5,8 +5,10 @@
 #   ./scripts/install.sh <branch>                           # a pull request’s branch
 set -euo pipefail
 
+# Resolved here, not inside main(): in a zsh function $0 is the function's name.
+project_dir="${0:A:h:h}"
+
 main() {
-  local project_dir="${0:A:h:h}"
   local branch="${1:-main}"
   local log_dir
   log_dir="$(mktemp -d /tmp/whatnote-install.XXXXXX)"
