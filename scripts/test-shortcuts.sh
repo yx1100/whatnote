@@ -11,6 +11,9 @@ swiftc \
   "$project_dir/Sources/Whatnote/RichTextCodec.swift" \
   "$project_dir/Sources/Whatnote/NoteMedia.swift" \
   "$project_dir/Sources/Whatnote/NoteChrome.swift" \
+  "$project_dir/Sources/Whatnote/DividerLine.swift" \
+  "$project_dir/Sources/Whatnote/ListMarker.swift" \
+  "$project_dir/Sources/Whatnote/NoteLayoutManager.swift" \
   "$project_dir/Sources/Whatnote/TodoCheckbox.swift" \
   "$project_dir/Sources/Whatnote/CodeBlock.swift" \
   "$project_dir/Sources/Whatnote/ClosePreferences.swift" \

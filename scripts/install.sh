@@ -2,7 +2,7 @@
 # Updates to a branch, runs every check, builds 随便记, and installs and opens the new version.
 #
 #   ./scripts/install.sh                                   # main
-#   ./scripts/install.sh claude/wonderful-dirac-19ho0c     # a pull request's branch
+#   ./scripts/install.sh <branch>                           # a pull request’s branch
 set -euo pipefail
 
 main() {

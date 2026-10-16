@@ -93,11 +93,4 @@ enum StickyWindowPresentation {
         window.hidesOnDeactivate = false
         window.collectionBehavior = isPinned ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
     }
-
-    static func transition(fromPinned: Bool, toPinned: Bool, window: NSWindow) {
-        apply(isPinned: toPinned, to: window)
-        if fromPinned && !toPinned {
-            window.orderBack(nil)
-        }
-    }
 }

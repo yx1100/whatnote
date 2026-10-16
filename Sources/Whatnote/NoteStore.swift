@@ -91,17 +91,6 @@ final class NoteStore {
         save()
     }
 
-    func updateFrames(_ frames: [UUID: WindowFrame]) {
-        guard !frames.isEmpty else { return }
-        let now = Date()
-        for index in notes.indices {
-            guard let frame = frames[notes[index].id] else { continue }
-            notes[index].frame = frame
-            notes[index].updatedAt = now
-        }
-        save()
-    }
-
     @discardableResult
     func complete(id: UUID) -> Bool {
         guard NoteHistory.complete(id: id, in: &notes) else { return false }

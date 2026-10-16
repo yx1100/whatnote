@@ -23,10 +23,6 @@ enum RichTextFormatting {
         toggleFontTrait(.italicFontMask, in: textView)
     }
 
-    static func isItalic(in textView: NSTextView) -> Bool {
-        NSFontManager.shared.traits(of: font(in: textView)).contains(.italicFontMask)
-    }
-
     private static func toggleFontTrait(_ trait: NSFontTraitMask, in textView: NSTextView) {
         let storage = textView.textStorage ?? NSTextStorage()
         let selected = textView.selectedRange()

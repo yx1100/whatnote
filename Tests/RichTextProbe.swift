@@ -471,8 +471,6 @@ struct RichTextProbe {
             && CodeBlock.isCodeLine(in: codeButtonStorage, at: 2)
             && !CodeBlock.isCodeLine(in: codeButtonStorage, at: 4)
             && RichTextFormatting.isCodeBlock(in: codeButtonEditor)
-            && CodeBlock.isFirstLine(in: codeButtonStorage, at: 0)
-            && !CodeBlock.isFirstLine(in: codeButtonStorage, at: 2)
         RichTextFormatting.toggleCodeBlock(in: codeButtonEditor)
         let codeButtonOff = !CodeBlock.isCodeLine(in: codeButtonStorage, at: 0)
             && !CodeBlock.isCodeLine(in: codeButtonStorage, at: 2)
