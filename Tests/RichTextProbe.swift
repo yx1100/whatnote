@@ -681,10 +681,20 @@ struct RichTextProbe {
             && BulletMarker.shape(in: "▪ 甲" as NSString, at: 0) == .square
             && BulletMarker.shape(in: "甲 • 乙" as NSString, at: 2) == nil
             && BulletMarker.shape(in: "•甲" as NSString, at: 0) == nil
-        print("bulletShapes=\(bulletShapes)")
+let numberAxis: Bool = {
+            let font = NoteAppearance.bodyFont()
+            guard let layout = ListMarker.orderedLayout(in: "7. 丁" as NSString, atParagraphStart: 0, markerLength: 3, font: font),
+                  let wide = ListMarker.orderedLayout(in: "100. 丁" as NSString, atParagraphStart: 0, markerLength: 5, font: font)
+            else { return false }
+            let digit = ("7" as NSString).size(withAttributes: [.font: font]).width
+            // The digit is centered on the circle's center; a number too wide for that starts at the edge.
+            return abs(layout.shift + digit / 2 - TodoCheckbox.diameter(for: font) / 2) < 0.01 && wide.shift == 0
+        }()
+        print("numberAxis=\(numberAxis)")
+                print("bulletShapes=\(bulletShapes)")
         print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
 
-        let codeBlocks = bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

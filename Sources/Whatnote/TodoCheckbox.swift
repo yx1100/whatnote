@@ -97,12 +97,32 @@ enum ListMarker {
         }
     }
 
+    /// Numbers ("3.", "1.2.") are drawn by hand, shifted right so the number itself (not its
+    /// period) is centered on the same axis as the circle of a task or the dot of a bullet.
+    /// Numbers too wide for that start at the left edge. `width` runs from the left edge to the
+    /// end of the period.
+    static func orderedLayout(
+        in string: NSString,
+        atParagraphStart start: Int,
+        markerLength: Int,
+        font: NSFont
+    ) -> (text: String, shift: CGFloat, width: CGFloat)? {
+        guard markerLength > 2 else { return nil }
+        let text = string.substring(with: NSRange(location: start, length: markerLength - 1))
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let full = (text as NSString).size(withAttributes: attributes).width
+        let number = (String(text.dropLast()) as NSString).size(withAttributes: attributes).width
+        let shift = max(0, TodoCheckbox.diameter(for: font) / 2 - number / 2)
+        return (text, shift, shift + full)
+    }
+
     /// Width of the marker itself, without the gap before the text.
     static func markerWidth(in string: NSString, atParagraphStart start: Int, markerLength: Int, font: NSFont) -> CGFloat {
+        if let ordered = orderedLayout(in: string, atParagraphStart: start, markerLength: markerLength, font: font) {
+            return ordered.width
+        }
         // Circles and bullets are drawn in a box the size of a checkbox.
-        if markerLength == 2 { return TodoCheckbox.markerWidth(for: font) }
-        let marker = string.substring(with: NSRange(location: start, length: markerLength - 1))
-        return (marker as NSString).size(withAttributes: [.font: font]).width
+        return TodoCheckbox.markerWidth(for: font)
     }
 
     /// Distance from the marker's left edge to the item's text, for the item at `start`.
@@ -402,7 +422,18 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         let string = storage.string as NSString
         if TodoMarker.isCompleted(in: string, at: charIndex) != nil { return true }
         if BulletMarker.shape(in: string, at: charIndex) != nil { return !CodeBlock.isCodeLine(in: storage, at: charIndex) }
-        return ListMarker.isMarkerSpace(in: string, at: charIndex) && !CodeBlock.isCodeLine(in: storage, at: charIndex)
+        if CodeBlock.isCodeLine(in: storage, at: charIndex) { return false }
+        if ListMarker.isMarkerSpace(in: string, at: charIndex) { return true }
+        return orderedMarkerStart(containing: charIndex, in: string) != nil
+    }
+
+    /// Start of the paragraph when `charIndex` is inside the number of a numbered item's marker.
+    private func orderedMarkerStart(containing charIndex: Int, in string: NSString) -> Int? {
+        guard charIndex >= 0, charIndex < string.length else { return nil }
+        let start = string.paragraphRange(for: NSRange(location: charIndex, length: 0)).location
+        guard let length = ListMarker.length(in: string, atParagraphStart: start), length > 2,
+              charIndex < start + length - 1 else { return nil }
+        return start
     }
 
     /// A list item's first word stays on the item's first line, breaking inside the word when it
@@ -437,6 +468,17 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         characterIndex charIndex: Int
     ) -> NSRect {
         guard let storage = layoutManager.textStorage else { return .zero }
+        if let start = orderedMarkerStart(containing: charIndex, in: storage.string as NSString) {
+            // The whole number is drawn by hand from its first character; the rest take no room.
+            let string = storage.string as NSString
+            let font = storage.attribute(.font, at: start, effectiveRange: nil) as? NSFont ?? NoteAppearance.bodyFont()
+            let width = charIndex == start
+                ? ListMarker.length(in: string, atParagraphStart: start).map {
+                    ListMarker.markerWidth(in: string, atParagraphStart: start, markerLength: $0, font: font)
+                } ?? 0
+                : 0
+            return NSRect(x: glyphPosition.x, y: glyphPosition.y, width: width, height: 0)
+        }
         if (storage.string as NSString).character(at: charIndex) == 0x20 {
             // The gap fills the space between the marker and the item's text column.
             let string = storage.string as NSString
@@ -464,6 +506,23 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
                 let box = TodoCheckbox.rect(forGlyphAt: marker.glyph, layoutManager: self)
                 BulletMarker.draw(marker.shape, in: box.offsetBy(dx: origin.x, dy: origin.y), color: NoteAppearance.textColor)
             })
+        }
+        for marker in orderedMarkers(in: glyphsToShow, string: string) {
+            replaced.append((marker.glyphs, { [self] in
+                let first = marker.glyphs.location
+                let lineRect = lineFragmentRect(forGlyphAt: first, effectiveRange: nil)
+                let location = self.location(forGlyphAt: first)
+                let attributes = storage.attributes(at: marker.start, effectiveRange: nil)
+                let font = attributes[.font] as? NSFont ?? NoteAppearance.bodyFont()
+                let point = NSPoint(
+                    x: origin.x + lineRect.minX + location.x + marker.shift,
+                    y: origin.y + lineRect.minY + location.y - font.ascender
+                )
+                (marker.text as NSString).draw(at: point, withAttributes: [
+                    .font: font,
+                    .foregroundColor: attributes[.foregroundColor] ?? NoteAppearance.textColor
+                ])
+            }))
         }
         replaced += todoMarkers(in: glyphsToShow, string: string).map { marker in
             (NSRange(location: marker.glyph, length: 1), {
@@ -511,6 +570,37 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         if end > segmentStart {
             super.drawGlyphs(forGlyphRange: NSRange(location: segmentStart, length: end - segmentStart), at: origin)
         }
+    }
+
+    /// The hand-drawn numbers of numbered items whose markers start in `glyphRange`.
+    private func orderedMarkers(
+        in glyphRange: NSRange,
+        string: NSString
+    ) -> [(start: Int, glyphs: NSRange, text: String, shift: CGFloat)] {
+        guard let storage = textStorage, string.length > 0 else { return [] }
+        let characters = characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        var markers: [(start: Int, glyphs: NSRange, text: String, shift: CGFloat)] = []
+        var location = string.paragraphRange(for: NSRange(location: min(characters.location, string.length - 1), length: 0)).location
+        while location < NSMaxRange(characters), location < string.length {
+            let paragraph = string.paragraphRange(for: NSRange(location: location, length: 0))
+            location = NSMaxRange(paragraph)
+            guard !CodeBlock.isCodeLine(in: storage, at: paragraph.location),
+                  let length = ListMarker.length(in: string, atParagraphStart: paragraph.location), length > 2 else { continue }
+            let font = storage.attribute(.font, at: paragraph.location, effectiveRange: nil) as? NSFont ?? NoteAppearance.bodyFont()
+            guard let layout = ListMarker.orderedLayout(
+                in: string, atParagraphStart: paragraph.location, markerLength: length, font: font
+            ) else { continue }
+            let glyphs = NSIntersectionRange(
+                self.glyphRange(
+                    forCharacterRange: NSRange(location: paragraph.location, length: length - 1),
+                    actualCharacterRange: nil
+                ),
+                glyphRange
+            )
+            guard glyphs.length > 0, glyphs.location == glyphIndexForCharacter(at: paragraph.location) else { continue }
+            markers.append((paragraph.location, glyphs, layout.text, layout.shift))
+        }
+        return markers
     }
 
     private func bulletMarkers(in glyphRange: NSRange, string: NSString) -> [(glyph: Int, shape: BulletMarker.Shape)] {
