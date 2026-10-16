@@ -305,7 +305,7 @@ extension RichTextFormatting {
     /// An item is empty only when nothing at all follows its marker; even a typed space counts as content.
     static func isEmptyItem(_ paragraph: NSRange, markerLength: Int, in string: NSString) -> Bool {
         var end = NSMaxRange(paragraph)
-        while end > paragraph.location, [0x0A, 0x0D, 0x2029].contains(string.character(at: end - 1)) {
+        while end > paragraph.location, LineBreak.isLineBreak(string.character(at: end - 1)) {
             end -= 1
         }
         return end - paragraph.location <= markerLength

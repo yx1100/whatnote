@@ -91,7 +91,7 @@ enum RichTextFormatting {
               !CodeBlock.isCodeLine(in: storage, at: location) else { return nil }
         let paragraph = string.paragraphRange(for: NSRange(location: location, length: 0))
         var content = paragraph
-        while content.length > 0, [0x0A, 0x0D, 0x2029].contains(string.character(at: NSMaxRange(content) - 1)) {
+        while content.length > 0, LineBreak.isLineBreak(string.character(at: NSMaxRange(content) - 1)) {
             content.length -= 1
         }
         return DividerLine.isDivider(string.substring(with: content)) ? paragraph : nil

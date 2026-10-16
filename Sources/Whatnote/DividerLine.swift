@@ -24,7 +24,7 @@ enum DividerLine {
             let paragraph = string.paragraphRange(for: NSRange(location: cursor, length: 0))
             var content = paragraph
             while content.length > 0,
-                  [0x0A, 0x0D, 0x2029].contains(string.character(at: NSMaxRange(content) - 1)) {
+                  LineBreak.isLineBreak(string.character(at: NSMaxRange(content) - 1)) {
                 content.length -= 1
             }
             if content.length > 0, isDivider(string.substring(with: content)) { result.append(content) }

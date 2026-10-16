@@ -13,7 +13,7 @@ enum TodoMarker {
         guard index >= 0, index + 1 < string.length, string.character(at: index + 1) == 0x20 else { return nil }
         if index > 0 {
             let previous = string.character(at: index - 1)
-            guard previous == 0x0A || previous == 0x0D || previous == 0x2029 else { return nil }
+            guard LineBreak.isLineBreak(previous) else { return nil }
         }
         switch string.character(at: index) {
         case pending: return false
@@ -35,7 +35,7 @@ enum BulletMarker {
         guard index >= 0, index + 1 < string.length, string.character(at: index + 1) == 0x20 else { return nil }
         if index > 0 {
             let previous = string.character(at: index - 1)
-            guard previous == 0x0A || previous == 0x0D || previous == 0x2029 else { return nil }
+            guard LineBreak.isLineBreak(previous) else { return nil }
         }
         switch string.character(at: index) {
         case 0x2022: return .disc

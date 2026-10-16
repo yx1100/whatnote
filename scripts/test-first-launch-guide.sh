@@ -9,6 +9,7 @@ swiftc \
   "$project_dir/Sources/Whatnote/NoteAppearance.swift" \
   "$project_dir/Sources/Whatnote/FirstLaunchGuide.swift" \
   "$project_dir/Sources/Whatnote/DividerLine.swift" \
+  "$project_dir/Sources/Whatnote/LineBreak.swift" \
   "$project_dir/Sources/Whatnote/ListMarker.swift" \
   "$project_dir/Sources/Whatnote/NoteLayoutManager.swift" \
   "$project_dir/Sources/Whatnote/TodoCheckbox.swift" \
