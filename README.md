@@ -79,6 +79,13 @@ open dist/Whatnote.app
 
 重新构建时，脚本会先退出正在运行的 `dist/Whatnote.app`，再打包，所以 `open` 打开的总是新版本。
 
+一条命令完成“更新到某个分支、运行全部检查、构建、安装到应用程序并打开”：
+
+```bash
+./scripts/install.sh            # main
+./scripts/install.sh <分支名>    # 某个 PR 的分支
+```
+
 运行检查：
 
 ```bash
