@@ -660,18 +660,25 @@ struct RichTextProbe {
         func hang(_ index: Int) -> CGFloat {
             (wrapStorage.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle)?.headIndent ?? -1
         }
-        let bulletWidth = ("•" as NSString).size(withAttributes: [.font: NoteAppearance.bodyFont()]).width
-        let numberWidth = ("10." as NSString).size(withAttributes: [.font: NoteAppearance.bodyFont()]).width
+        let bodyFont = NoteAppearance.bodyFont()
+        let wideNumber = ("10." as NSString).size(withAttributes: [.font: bodyFont]).width + ListMarker.minimumGap
         let hangsAligned = wrapChanged
-            && hang(0) == (bulletWidth + ListMarker.spacing).rounded()
-            && hang(5) == (numberWidth + ListMarker.spacing).rounded()
-            && hang(5) > hang(0)
-            && hang(11) == (TodoCheckbox.markerWidth(for: NoteAppearance.bodyFont()) + ListMarker.spacing).rounded()
+            && hang(0) == ListMarker.textColumn
+            && hang(11) == ListMarker.textColumn
+            && hang(5) == max(ListMarker.textColumn, wideNumber).rounded()
             && hang(15) == 0
             && !RichTextFormatting.alignListContinuationLines(in: wrapStorage)
-        print("hangsAligned=\(hangsAligned)")
+        // Short numbers share the column too.
+        let shortNumberStorage = NSTextStorage(
+            string: "7. 丁",
+            attributes: [.font: bodyFont, .paragraphStyle: NSParagraphStyle.default]
+        )
+        RichTextFormatting.alignListContinuationLines(in: shortNumberStorage)
+        let shortNumberAligned = (shortNumberStorage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)?
+            .headIndent == ListMarker.textColumn
+        print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
 
-        let codeBlocks = hangsAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        let codeBlocks = hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

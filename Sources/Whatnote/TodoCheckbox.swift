@@ -26,8 +26,12 @@ enum TodoMarker {
 /// The marker that starts a list line: a to-do marker ("☐ "), a bullet ("• ") or a number
 /// ("12. "). The space after it is drawn as a fixed gap, and the cursor never stops inside it.
 enum ListMarker {
-    /// Width of the gap between a marker and its text, drawn in place of the space.
-    static let spacing: CGFloat = 5
+    /// Where an item's text starts, measured from the left edge of its marker. Circles, bullets
+    /// and short numbers all share this column, so the text of different lists lines up the
+    /// way it does in Notes or Word. A wider marker (a two-digit or nested number) pushes its
+    /// own text further right, never closer than `minimumGap`.
+    static let textColumn: CGFloat = 22
+    static let minimumGap: CGFloat = 4
     private static let symbols: Set<unichar> = [
         0x2610, 0x2611, // ☐ ☑
         0x2022, 0x2218, 0x25AA, // • ∘ ▪
@@ -50,6 +54,21 @@ enum ListMarker {
             guard index < string.length else { return nil }
             if string.character(at: index) == 0x20 { return index - start + 1 }
         }
+    }
+
+    /// Width of the marker itself, without the gap before the text.
+    static func markerWidth(in string: NSString, atParagraphStart start: Int, markerLength: Int, font: NSFont) -> CGFloat {
+        let symbol = string.character(at: start)
+        if symbol == 0x2610 || symbol == 0x2611 { return TodoCheckbox.markerWidth(for: font) }
+        let marker = string.substring(with: NSRange(location: start, length: markerLength - 1))
+        return (marker as NSString).size(withAttributes: [.font: font]).width
+    }
+
+    /// Distance from the marker's left edge to the item's text, for the item at `start`.
+    static func textOffset(in string: NSString, atParagraphStart start: Int, font: NSFont) -> CGFloat? {
+        guard let markerLength = length(in: string, atParagraphStart: start) else { return nil }
+        let width = markerWidth(in: string, atParagraphStart: start, markerLength: markerLength, font: font)
+        return max(textColumn, width + minimumGap).rounded()
     }
 
     /// Plain text for other apps: checkboxes, bullets and nested numbers become standard
@@ -377,7 +396,15 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
     ) -> NSRect {
         guard let storage = layoutManager.textStorage else { return .zero }
         if (storage.string as NSString).character(at: charIndex) == 0x20 {
-            return NSRect(x: glyphPosition.x, y: glyphPosition.y, width: ListMarker.spacing, height: 0)
+            // The gap fills the space between the marker and the item's text column.
+            let string = storage.string as NSString
+            let start = string.paragraphRange(for: NSRange(location: charIndex, length: 0)).location
+            let font = storage.attribute(.font, at: start, effectiveRange: nil) as? NSFont ?? NoteAppearance.bodyFont()
+            let width = ListMarker.length(in: string, atParagraphStart: start).map {
+                ListMarker.markerWidth(in: string, atParagraphStart: start, markerLength: $0, font: font)
+            } ?? 0
+            let offset = ListMarker.textOffset(in: string, atParagraphStart: start, font: font) ?? ListMarker.minimumGap
+            return NSRect(x: glyphPosition.x, y: glyphPosition.y, width: max(ListMarker.minimumGap, offset - width), height: 0)
         }
         let font = storage.attribute(.font, at: charIndex, effectiveRange: nil) as? NSFont ?? NoteAppearance.bodyFont()
         return NSRect(x: glyphPosition.x, y: glyphPosition.y, width: TodoCheckbox.markerWidth(for: font), height: 0)

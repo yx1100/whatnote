@@ -1239,8 +1239,7 @@ enum RichTextFormatting {
     }
 
     /// Makes the wrapped lines of every list item start where the item's text starts, that is
-    /// after the marker and its gap. The marker's width depends on the symbol, the number and
-    /// the font, so a fixed indent only lines up by chance. Returns whether anything changed.
+    /// at the list's text column (see `ListMarker.textColumn`), the same for every kind of list. Returns whether anything changed.
     @discardableResult
     static func alignListContinuationLines(in storage: NSTextStorage) -> Bool {
         let string = storage.string as NSString
@@ -1250,20 +1249,13 @@ enum RichTextFormatting {
             let paragraph = string.paragraphRange(for: NSRange(location: location, length: 0))
             location = NSMaxRange(paragraph)
             guard !CodeBlock.isCodeLine(in: storage, at: paragraph.location),
-                  let markerLength = ListMarker.length(in: string, atParagraphStart: paragraph.location),
+                  ListMarker.length(in: string, atParagraphStart: paragraph.location) != nil,
                   let style = storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle
             else { continue }
             let font = storage.attribute(.font, at: paragraph.location, effectiveRange: nil) as? NSFont
                 ?? NoteAppearance.bodyFont()
-            let symbol = string.character(at: paragraph.location)
-            let markerWidth: CGFloat
-            if symbol == 0x2610 || symbol == 0x2611 {
-                markerWidth = TodoCheckbox.markerWidth(for: font)
-            } else {
-                let marker = string.substring(with: NSRange(location: paragraph.location, length: markerLength - 1))
-                markerWidth = (marker as NSString).size(withAttributes: [.font: font]).width
-            }
-            let indent = (style.firstLineHeadIndent + markerWidth + ListMarker.spacing).rounded()
+            let indent = style.firstLineHeadIndent
+                + (ListMarker.textOffset(in: string, atParagraphStart: paragraph.location, font: font) ?? 0)
             guard abs(style.headIndent - indent) >= 0.5,
                   let aligned = style.mutableCopy() as? NSMutableParagraphStyle else { continue }
             aligned.headIndent = indent
