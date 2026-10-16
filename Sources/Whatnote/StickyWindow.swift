@@ -1,8 +1,9 @@
 import AppKit
 
 final class StickyWindow: NSWindow {
-    /// Height of the strip along the bottom edge where a double-click fits the note to its text.
-    static let bottomEdgeHeight: CGFloat = 6
+    /// Height of the strip along the bottom where a double-click fits the note to its text.
+    /// Buttons in it keep their own clicks.
+    static let bottomEdgeHeight: CGFloat = 24
     var onBottomEdgeDoubleClick: (() -> Void)?
 
     override var canBecomeKey: Bool { true }
@@ -11,11 +12,21 @@ final class StickyWindow: NSWindow {
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown, event.clickCount == 2,
            event.locationInWindow.y <= Self.bottomEdgeHeight,
+           !isOverControl(at: event.locationInWindow),
            let onBottomEdgeDoubleClick {
             onBottomEdgeDoubleClick()
             return
         }
         super.sendEvent(event)
+    }
+
+    private func isOverControl(at point: NSPoint) -> Bool {
+        var view = contentView?.superview?.hitTest(point)
+        while let current = view {
+            if current is NSControl { return true }
+            view = current.superview
+        }
+        return false
     }
 }
 
@@ -81,12 +92,5 @@ enum StickyWindowPresentation {
         window.level = isPinned ? .floating : .normal
         window.hidesOnDeactivate = false
         window.collectionBehavior = isPinned ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
-    }
-
-    static func transition(fromPinned: Bool, toPinned: Bool, window: NSWindow) {
-        apply(isPinned: toPinned, to: window)
-        if fromPinned && !toPinned {
-            window.orderBack(nil)
-        }
     }
 }

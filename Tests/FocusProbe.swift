@@ -22,20 +22,6 @@ struct FocusProbe {
             && window.collectionBehavior.contains(.canJoinAllSpaces)
             && window.collectionBehavior.contains(.fullScreenAuxiliary)
 
-        let peer = StickyWindow(
-            contentRect: NSRect(x: 20, y: 20, width: 100, height: 100),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        peer.orderFrontRegardless()
-        window.orderFrontRegardless()
-        StickyWindowPresentation.transition(fromPinned: true, toPinned: false, window: window)
-        let ordered = NSApp.orderedWindows
-        let unpinMovesBack = ordered.firstIndex(of: peer).map { peerIndex in
-            ordered.firstIndex(of: window).map { peerIndex < $0 } ?? false
-        } ?? false
-
         let resident = StickyWindow(
             contentRect: NSRect(x: 40, y: 40, width: 180, height: 120),
             styleMask: [.borderless, .resizable],
@@ -87,12 +73,11 @@ struct FocusProbe {
             return noteIndex < peerIndex
         } ?? false
 
-        print("canBecomeKey=\(window.canBecomeKey) canBecomeMain=\(window.canBecomeMain) unpinned=\(unpinnedBehavior) pinned=\(pinnedBehavior) unpinMovesBack=\(unpinMovesBack) dedicatedProxy=\(usesDedicatedPinnedProxy) restoresResident=\(restoresOriginalDesktopWindow) keepsOrderAfterBlur=\(keepsStandardOrderAfterResigningKey)")
+        print("canBecomeKey=\(window.canBecomeKey) canBecomeMain=\(window.canBecomeMain) unpinned=\(unpinnedBehavior) pinned=\(pinnedBehavior) dedicatedProxy=\(usesDedicatedPinnedProxy) restoresResident=\(restoresOriginalDesktopWindow) keepsOrderAfterBlur=\(keepsStandardOrderAfterResigningKey)")
         guard window.canBecomeKey,
               window.canBecomeMain,
               unpinnedBehavior,
               pinnedBehavior,
-              unpinMovesBack,
               usesDedicatedPinnedProxy,
               restoresOriginalDesktopWindow,
               keepsStandardOrderAfterResigningKey else { exit(1) }

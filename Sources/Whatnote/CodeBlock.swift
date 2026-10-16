@@ -41,15 +41,6 @@ enum CodeBlock {
         return isCodeStyle(storage.attribute(.paragraphStyle, at: location, effectiveRange: nil) as? NSParagraphStyle)
     }
 
-    /// Whether `location` starts the first line of a code block (not a wrapped continuation).
-    static func isFirstLine(in storage: NSAttributedString, at location: Int) -> Bool {
-        guard isCodeLine(in: storage, at: location) else { return false }
-        let string = storage.string as NSString
-        guard string.paragraphRange(for: NSRange(location: location, length: 0)).location == location else { return false }
-        guard location > 0 else { return true }
-        return !isCodeLine(in: storage, at: string.paragraphRange(for: NSRange(location: location - 1, length: 0)).location)
-    }
-
     /// A line holding only an opening or closing fence, such as "```" or "```swift".
     static func isFence(_ line: String) -> Bool {
         guard let fenceExpression else { return false }

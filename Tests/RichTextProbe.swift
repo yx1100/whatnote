@@ -471,8 +471,6 @@ struct RichTextProbe {
             && CodeBlock.isCodeLine(in: codeButtonStorage, at: 2)
             && !CodeBlock.isCodeLine(in: codeButtonStorage, at: 4)
             && RichTextFormatting.isCodeBlock(in: codeButtonEditor)
-            && CodeBlock.isFirstLine(in: codeButtonStorage, at: 0)
-            && !CodeBlock.isFirstLine(in: codeButtonStorage, at: 2)
         RichTextFormatting.toggleCodeBlock(in: codeButtonEditor)
         let codeButtonOff = !CodeBlock.isCodeLine(in: codeButtonStorage, at: 0)
             && !CodeBlock.isCodeLine(in: codeButtonStorage, at: 2)
@@ -607,7 +605,94 @@ struct RichTextProbe {
         let headingKept = RichTextFormatting.headingLevel(of: belowHeadingEditor.typingAttributes[.font] as? NSFont) == 1
         print("belowHeading body=\(bodyBelowHeading) headingKept=\(headingKept)")
 
-        let codeBlocks = bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        // Numbered items nest as "1.1. " with Tab and come back with ⇧Tab; Return continues the level.
+        let nestedEditor = NSTextView()
+        nestedEditor.isRichText = true
+        nestedEditor.string = "1. 一\n2. 二\n3. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 7, length: 0))
+        let nestedIn = RichTextFormatting.adjustBulletLevel(in: nestedEditor, delta: 1)
+            && nestedEditor.string == "1. 一\n1.1. 二\n2. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 11, length: 0))
+        let nestedReturn = RichTextFormatting.handleStructuredNewline(in: nestedEditor)
+            && nestedEditor.string == "1. 一\n1.1. 二\n1.2. \n2. 三"
+        nestedEditor.string = "1. 一\n1.1. 二\n2. 三"
+        nestedEditor.setSelectedRange(NSRange(location: 9, length: 0))
+        let nestedOut = RichTextFormatting.adjustBulletLevel(in: nestedEditor, delta: -1)
+            && nestedEditor.string == "1. 一\n2. 二\n3. 三"
+        // Checklist items indent too, but never deeper than one level below the item above.
+        let todoIndentEditor = NSTextView()
+        todoIndentEditor.isRichText = true
+        todoIndentEditor.string = "☐ 甲\n☐ 乙"
+        todoIndentEditor.setSelectedRange(NSRange(location: 0, length: 0))
+        let firstTodoStays = !RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
+        todoIndentEditor.setSelectedRange(NSRange(location: 5, length: 0))
+        let secondTodoIndents = RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
+            && (todoIndentEditor.textStorage?.attribute(.paragraphStyle, at: 4, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        // An empty item takes the type of the list Markdown typed after its marker.
+        let switchedType = convertedEditor("• 1. ").string == "1. "
+            && convertedEditor("1. [] ").string == "☐ "
+            && convertedEditor("☐ - ").string == "• "
+            && convertedEditor("• 【】 ").string == "☐ "
+        let nestedMarkdown = ListMarker.length(in: "1.2. 项", atParagraphStart: 0) == 5
+            && ListMarker.markdown(from: "1. 一\n1.1. 二") == "1. 一\n   1. 二"
+        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && switchedType && nestedMarkdown
+        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) switch=\(switchedType) markdown=\(nestedMarkdown)")
+
+        // Text that came in without a font (AppKit's small default) gets the body font back.
+        let fontlessEditor = NSTextView()
+        fontlessEditor.isRichText = true
+        fontlessEditor.textStorage?.setAttributedString(NSAttributedString(string: "abc"))
+        fontlessEditor.textStorage?.addAttribute(.font, value: NSFont.systemFont(ofSize: 12), range: NSRange(location: 1, length: 1))
+        RichTextFormatting.applyMarkdownSyntax(in: fontlessEditor)
+        let fontsRepaired = (0..<3).allSatisfy {
+            (fontlessEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)?.pointSize == NoteAppearance.bodyFontSize
+        }
+        print("fontsRepaired=\(fontsRepaired)")
+
+        // Wrapped lines of a list item start where its text starts, whatever the marker's width.
+        let wrapStorage = NSTextStorage(
+            string: "• 甲\n10. 乙\n☐ 丙\n普通",
+            attributes: [.font: NoteAppearance.bodyFont(), .paragraphStyle: NSParagraphStyle.default]
+        )
+        let wrapChanged = RichTextFormatting.alignListContinuationLines(in: wrapStorage)
+        func hang(_ index: Int) -> CGFloat {
+            (wrapStorage.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle)?.headIndent ?? -1
+        }
+        let bodyFont = NoteAppearance.bodyFont()
+        let wideNumber = ("10." as NSString).size(withAttributes: [.font: bodyFont]).width + ListMarker.minimumGap
+        let hangsAligned = wrapChanged
+            && hang(0) == ListMarker.textColumn
+            && hang(11) == ListMarker.textColumn
+            && hang(5) == max(ListMarker.textColumn, wideNumber).rounded()
+            && hang(15) == 0
+            && !RichTextFormatting.alignListContinuationLines(in: wrapStorage)
+        // Short numbers share the column too.
+        let shortNumberStorage = NSTextStorage(
+            string: "7. 丁",
+            attributes: [.font: bodyFont, .paragraphStyle: NSParagraphStyle.default]
+        )
+        RichTextFormatting.alignListContinuationLines(in: shortNumberStorage)
+        let shortNumberAligned = (shortNumberStorage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)?
+            .headIndent == ListMarker.textColumn
+        let bulletShapes = BulletMarker.shape(in: "• 甲" as NSString, at: 0) == .disc
+            && BulletMarker.shape(in: "∘ 甲" as NSString, at: 0) == .ring
+            && BulletMarker.shape(in: "▪ 甲" as NSString, at: 0) == .square
+            && BulletMarker.shape(in: "甲 • 乙" as NSString, at: 2) == nil
+            && BulletMarker.shape(in: "•甲" as NSString, at: 0) == nil
+let numberAxis: Bool = {
+            let font = NoteAppearance.bodyFont()
+            guard let layout = ListMarker.orderedLayout(in: "7. 丁" as NSString, atParagraphStart: 0, markerLength: 3, font: font),
+                  let wide = ListMarker.orderedLayout(in: "100. 丁" as NSString, atParagraphStart: 0, markerLength: 5, font: font)
+            else { return false }
+            let digit = ("7" as NSString).size(withAttributes: [.font: font]).width
+            // The digit is centered on the circle's center; a number too wide for that starts at the edge.
+            return abs(layout.shift + digit / 2 - TodoCheckbox.diameter(for: font) / 2) < 0.01 && wide.shift == 0
+        }()
+        print("numberAxis=\(numberAxis)")
+                print("bulletShapes=\(bulletShapes)")
+        print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
+
+        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

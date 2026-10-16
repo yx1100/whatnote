@@ -5,8 +5,8 @@ project_dir="${0:A:h:h}"
 configuration="${1:-release}"
 app_dir="$project_dir/dist/Whatnote.app"
 contents_dir="$app_dir/Contents"
-marketing_version="${MARKETING_VERSION:-1.2.2}"
-build_number="${BUILD_NUMBER:-5}"
+marketing_version="${MARKETING_VERSION:-1.3}"
+build_number="${BUILD_NUMBER:-7}"
 bundle_identifier="${BUNDLE_IDENTIFIER:-com.yx1100.whatnote}"
 # A self-signed certificate named "Whatnote Local Signing" in the login keychain gives every
 # build the same identity, so macOS keeps permissions such as Screen Recording across builds.
@@ -16,8 +16,8 @@ if [[ -z "${CODESIGN_IDENTITY:-}" ]] && security find-certificate -c "$local_ide
 fi
 codesign_identity="${CODESIGN_IDENTITY:--}"
 
-if [[ ! "$marketing_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
-  print -u2 "MARKETING_VERSION must use numeric SemVer (X.Y.Z): $marketing_version"
+if [[ ! "$marketing_version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' ]]; then
+  print -u2 "MARKETING_VERSION must be numeric (X.Y or X.Y.Z): $marketing_version"
   exit 1
 fi
 if [[ ! "$build_number" =~ '^[0-9]+$' ]]; then
@@ -26,6 +26,18 @@ if [[ ! "$build_number" =~ '^[0-9]+$' ]]; then
 fi
 
 cd "$project_dir"
+# A running copy of this build would stay in front of the new one: `open` only brings an
+# already running app forward. Quit it first (notes are saved as they change).
+running_binary="$contents_dir/MacOS/Whatnote"
+if pgrep -f "$running_binary" >/dev/null 2>&1; then
+  print "Quitting the running Whatnote from $app_dir"
+  pkill -TERM -f "$running_binary" || true
+  for _ in {1..30}; do
+    pgrep -f "$running_binary" >/dev/null 2>&1 || break
+    sleep 0.1
+  done
+  pkill -KILL -f "$running_binary" 2>/dev/null || true
+fi
 rm -rf "$app_dir"
 mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"
 
