@@ -23,6 +23,47 @@ enum TodoMarker {
     }
 }
 
+/// Bullets are stored as "• ", "∘ " or "▪ " (and the older "◦ ", "○ ") and drawn as small shapes
+/// centered in the same marker box as a checkbox, so every kind of list starts at the same place.
+enum BulletMarker {
+    static let characters = CharacterSet(charactersIn: "\u{2022}\u{2218}\u{25AA}\u{25E6}\u{25CB}")
+
+    enum Shape { case disc, ring, square }
+
+    /// nil unless `index` holds a bullet at the start of a paragraph, followed by its space.
+    static func shape(in string: NSString, at index: Int) -> Shape? {
+        guard index >= 0, index + 1 < string.length, string.character(at: index + 1) == 0x20 else { return nil }
+        if index > 0 {
+            let previous = string.character(at: index - 1)
+            guard previous == 0x0A || previous == 0x0D || previous == 0x2029 else { return nil }
+        }
+        switch string.character(at: index) {
+        case 0x2022: return .disc
+        case 0x2218, 0x25E6, 0x25CB: return .ring
+        case 0x25AA: return .square
+        default: return nil
+        }
+    }
+
+    /// Draws into a flipped view, centered in `box` (the marker's checkbox-sized box).
+    static func draw(_ shape: Shape, in box: NSRect, color: NSColor) {
+        let size = (box.width * 0.45).rounded()
+        let center = NSPoint(x: box.midX, y: box.midY)
+        let rect = NSRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)
+        color.set()
+        switch shape {
+        case .disc:
+            NSBezierPath(ovalIn: rect).fill()
+        case .ring:
+            let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 0.6, dy: 0.6))
+            ring.lineWidth = 1.2
+            ring.stroke()
+        case .square:
+            NSBezierPath(rect: rect.insetBy(dx: 0.5, dy: 0.5)).fill()
+        }
+    }
+}
+
 /// The marker that starts a list line: a to-do marker ("☐ "), a bullet ("• ") or a number
 /// ("12. "). The space after it is drawn as a fixed gap, and the cursor never stops inside it.
 enum ListMarker {
@@ -58,8 +99,8 @@ enum ListMarker {
 
     /// Width of the marker itself, without the gap before the text.
     static func markerWidth(in string: NSString, atParagraphStart start: Int, markerLength: Int, font: NSFont) -> CGFloat {
-        let symbol = string.character(at: start)
-        if symbol == 0x2610 || symbol == 0x2611 { return TodoCheckbox.markerWidth(for: font) }
+        // Circles and bullets are drawn in a box the size of a checkbox.
+        if markerLength == 2 { return TodoCheckbox.markerWidth(for: font) }
         let marker = string.substring(with: NSRange(location: start, length: markerLength - 1))
         return (marker as NSString).size(withAttributes: [.font: font]).width
     }
@@ -360,6 +401,7 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
     private func isDrawnAsSpace(_ charIndex: Int, in storage: NSTextStorage) -> Bool {
         let string = storage.string as NSString
         if TodoMarker.isCompleted(in: string, at: charIndex) != nil { return true }
+        if BulletMarker.shape(in: string, at: charIndex) != nil { return !CodeBlock.isCodeLine(in: storage, at: charIndex) }
         return ListMarker.isMarkerSpace(in: string, at: charIndex) && !CodeBlock.isCodeLine(in: storage, at: charIndex)
     }
 
@@ -417,7 +459,13 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         }
         let string = storage.string as NSString
         // Glyph ranges drawn by hand instead of as text, in order.
-        var replaced: [(glyphs: NSRange, draw: () -> Void)] = todoMarkers(in: glyphsToShow, string: string).map { marker in
+        var replaced: [(glyphs: NSRange, draw: () -> Void)] = bulletMarkers(in: glyphsToShow, string: string).map { marker in
+            (NSRange(location: marker.glyph, length: 1), {
+                let box = TodoCheckbox.rect(forGlyphAt: marker.glyph, layoutManager: self)
+                BulletMarker.draw(marker.shape, in: box.offsetBy(dx: origin.x, dy: origin.y), color: NoteAppearance.textColor)
+            })
+        }
+        replaced += todoMarkers(in: glyphsToShow, string: string).map { marker in
             (NSRange(location: marker.glyph, length: 1), {
                 let box = TodoCheckbox.rect(forGlyphAt: marker.glyph, layoutManager: self)
                 TodoCheckbox.draw(
@@ -463,6 +511,28 @@ final class NoteLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         if end > segmentStart {
             super.drawGlyphs(forGlyphRange: NSRange(location: segmentStart, length: end - segmentStart), at: origin)
         }
+    }
+
+    private func bulletMarkers(in glyphRange: NSRange, string: NSString) -> [(glyph: Int, shape: BulletMarker.Shape)] {
+        let characters = characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        let searchEnd = NSMaxRange(characters)
+        var searchStart = characters.location
+        var markers: [(glyph: Int, shape: BulletMarker.Shape)] = []
+        while searchStart < searchEnd {
+            let found = string.rangeOfCharacter(
+                from: BulletMarker.characters,
+                options: [],
+                range: NSRange(location: searchStart, length: searchEnd - searchStart)
+            )
+            guard found.location != NSNotFound else { break }
+            if let shape = BulletMarker.shape(in: string, at: found.location),
+               let storage = textStorage, !CodeBlock.isCodeLine(in: storage, at: found.location) {
+                let glyph = glyphIndexForCharacter(at: found.location)
+                if NSLocationInRange(glyph, glyphRange) { markers.append((glyph, shape)) }
+            }
+            searchStart = NSMaxRange(found)
+        }
+        return markers
     }
 
     private func todoMarkers(in glyphRange: NSRange, string: NSString) -> [(glyph: Int, isCompleted: Bool)] {

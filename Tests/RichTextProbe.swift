@@ -676,9 +676,15 @@ struct RichTextProbe {
         RichTextFormatting.alignListContinuationLines(in: shortNumberStorage)
         let shortNumberAligned = (shortNumberStorage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)?
             .headIndent == ListMarker.textColumn
+        let bulletShapes = BulletMarker.shape(in: "• 甲" as NSString, at: 0) == .disc
+            && BulletMarker.shape(in: "∘ 甲" as NSString, at: 0) == .ring
+            && BulletMarker.shape(in: "▪ 甲" as NSString, at: 0) == .square
+            && BulletMarker.shape(in: "甲 • 乙" as NSString, at: 2) == nil
+            && BulletMarker.shape(in: "•甲" as NSString, at: 0) == nil
+        print("bulletShapes=\(bulletShapes)")
         print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
 
-        let codeBlocks = hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        let codeBlocks = bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")
