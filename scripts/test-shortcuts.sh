@@ -17,7 +17,9 @@ swiftc \
   "$project_dir/Sources/Whatnote/TodoCheckbox.swift" \
   "$project_dir/Sources/Whatnote/CodeBlock.swift" \
   "$project_dir/Sources/Whatnote/ClosePreferences.swift" \
-  "$project_dir/Sources/Whatnote/StickyViews.swift" \
+  "$project_dir/Sources/Whatnote/StickyRootView.swift" \
+  "$project_dir/Sources/Whatnote/StickyTextView.swift" \
+  "$project_dir/Sources/Whatnote/StickyToolbar.swift" \
   "$project_dir/Tests/ShortcutProbe.swift" \
   -o "$probe_binary"
 
