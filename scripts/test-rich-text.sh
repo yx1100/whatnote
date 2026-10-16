@@ -15,6 +15,11 @@ swiftc \
   "$project_dir/Sources/Whatnote/TodoCheckbox.swift" \
   "$project_dir/Sources/Whatnote/CodeBlock.swift" \
   "$project_dir/Sources/Whatnote/RichTextFormatting.swift" \
+  "$project_dir/Sources/Whatnote/RichTextFormatting+Lists.swift" \
+  "$project_dir/Sources/Whatnote/RichTextFormatting+Tasks.swift" \
+  "$project_dir/Sources/Whatnote/RichTextFormatting+Numbering.swift" \
+  "$project_dir/Sources/Whatnote/RichTextFormatting+Markdown.swift" \
+  "$project_dir/Sources/Whatnote/RichTextFormatting+Code.swift" \
   "$project_dir/Tests/RichTextProbe.swift" \
   -o "$probe_binary"
 
