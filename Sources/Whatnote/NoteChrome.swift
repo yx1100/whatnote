@@ -4,12 +4,17 @@ import AppKit
 /// Liquid Glass; earlier systems get a frosted material of the same shape.
 final class GlassCapsuleView: NSView {
     let stack = NSStackView()
+    private let background: NSView
+    /// Flat: the buttons stay, the glass behind them goes.
+    var isFlat = false {
+        didSet { background.isHidden = isFlat }
+    }
 
     init(views: [NSView], horizontalPadding: CGFloat = 1, spacing: CGFloat = 0) {
+        background = Self.makeBackground(cornerRadius: NoteAppearance.capsuleHeight / 2)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
-        let background = Self.makeBackground(cornerRadius: NoteAppearance.capsuleHeight / 2)
         background.translatesAutoresizingMaskIntoConstraints = false
         addSubview(background)
 

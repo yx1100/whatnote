@@ -83,7 +83,10 @@ struct StorageProbe {
         var lockedNote = legacyNotes[0]
         lockedNote.isLocked = true
         let reloaded = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
-        precondition(reloaded[0].isLocked)
+        precondition(reloaded[0].isLocked && reloaded[0].unlockedFrame == nil)
+        lockedNote.unlockedFrame = WindowFrame(NSRect(x: 10, y: 20, width: 340, height: 260))
+        let withFrame = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
+        precondition(withFrame[0].unlockedFrame?.rect == NSRect(x: 10, y: 20, width: 340, height: 260))
 
         print("storage migration and first-launch detection: pass")
     }

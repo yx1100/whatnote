@@ -16,14 +16,16 @@ final class StickyRootView: NSView {
     let scrollView = NSScrollView()
     private let noteLayoutManager = NoteLayoutManager()
     private var hasScrolledToTop = false
+    private var color: NoteColor
+    private var isLocked = false
 
     init(note: StickyNote) {
+        color = note.color
         toolbar = StickyToolbarView(color: note.color, isPinned: note.isPinned, isLocked: note.isLocked)
         super.init(frame: .zero)
         // Notes are paper-colored in both light and dark mode, so keep light controls and text.
         appearance = NSAppearance(named: .aqua)
         wantsLayer = true
-        layer?.cornerRadius = NoteAppearance.cornerRadius
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
 
@@ -93,7 +95,6 @@ final class StickyRootView: NSView {
         ])
         updateColor(note.color)
         updateLock(note.isLocked)
-        layer?.borderWidth = 0.5
         layer?.borderColor = NSColor.black.withAlphaComponent(0.12).cgColor
     }
 
@@ -108,18 +109,28 @@ final class StickyRootView: NSView {
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
-    /// Locked: the text can be read, scrolled and copied but not changed, and the formatting
-    /// bar goes away.
+    /// Locked: the text can be read, scrolled and copied but not changed, the formatting bar
+    /// goes away, and the paper turns flat, rounder and a little see-through.
     func updateLock(_ isLocked: Bool) {
+        self.isLocked = isLocked
         textView.isLocked = isLocked
+        layer?.cornerRadius = isLocked ? NoteAppearance.lockedCornerRadius : NoteAppearance.cornerRadius
+        layer?.borderWidth = isLocked ? 0 : 0.5
+        applyPaperColor()
         footer.isHidden = isLocked
         toolbar.update(isLocked: isLocked)
     }
 
     func updateColor(_ color: NoteColor) {
-        layer?.backgroundColor = color.background.cgColor
+        self.color = color
+        applyPaperColor()
         footer.updateAccent(color.accent)
         noteLayoutManager.checkboxAccent = color.accent
         textView.needsDisplay = true
+    }
+
+    private func applyPaperColor() {
+        let alpha = isLocked ? NoteAppearance.lockedPaperAlpha : 1
+        layer?.backgroundColor = color.background.withAlphaComponent(alpha).cgColor
     }
 }

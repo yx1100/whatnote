@@ -17,7 +17,7 @@
 - 粘贴或拖入图片，网址自动成为链接
 - 全局快捷键在任何 App 中新建便签
 - 置顶便签显示在所有桌面
-- 锁定便签：不能移动、改大小或编辑，仍可滚动查看、复制和勾选待办；排列便签时它保持不动。和置顶互不影响
+- 锁定便签：变成桌面小组件的样子（固定大小、扁平、无阴影、颜色略透明），不能移动、改大小或编辑，仍可滚动查看、复制和勾选待办；排列便签时它保持不动；解锁后恢复锁定前的大小和位置。和置顶互不影响
 - 已完成的便签：悬停预览完整内容，可连续恢复或删除
 - 数据保存在本机：`~/Library/Application Support/Whatnote/notes.json`
 
@@ -96,8 +96,8 @@ for test_script in scripts/test-*.sh; do "$test_script"; done
 生成 DMG：
 
 ```bash
-MARKETING_VERSION=1.3.2 BUILD_NUMBER=8 ./scripts/build-app.sh
-./scripts/make-dmg.sh 1.3.2
+MARKETING_VERSION=1.4.0 BUILD_NUMBER=8 ./scripts/build-app.sh
+./scripts/make-dmg.sh 1.4.0
 ```
 
 ## 许可证

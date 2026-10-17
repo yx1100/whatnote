@@ -71,6 +71,8 @@ struct StickyNote: Codable, Identifiable {
     var isPinned: Bool
     /// A locked note cannot be moved, resized or edited; its to-do items can still be checked.
     var isLocked: Bool
+    /// Where a locked note was before it took the widget size; unlocking puts it back there.
+    var unlockedFrame: WindowFrame?
     var isHidden: Bool
     var reminderDate: Date?
     var completedAt: Date?
@@ -99,6 +101,7 @@ struct StickyNote: Codable, Identifiable {
             frame: WindowFrame(initialFrame),
             isPinned: false,
             isLocked: false,
+            unlockedFrame: nil,
             isHidden: false,
             reminderDate: nil,
             completedAt: nil,
@@ -119,6 +122,7 @@ extension StickyNote {
         frame = try container.decode(WindowFrame.self, forKey: .frame)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
+        unlockedFrame = try container.decodeIfPresent(WindowFrame.self, forKey: .unlockedFrame)
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
         reminderDate = try container.decodeIfPresent(Date.self, forKey: .reminderDate)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)

@@ -32,6 +32,7 @@ final class StickyToolbarView: NSView {
     private let colorButtons: [ColorDotButton]
     private let leadingCapsule: GlassCapsuleView
     private let colorCapsule: GlassCapsuleView
+    private let actionCapsule: GlassCapsuleView
 
     init(color: NoteColor, isPinned: Bool, isLocked: Bool = false) {
         arrangeButton = NoteToolButton(
@@ -50,6 +51,11 @@ final class StickyToolbarView: NSView {
         colorButtons = NoteColor.allCases.map { ColorDotButton(color: $0) }
         leadingCapsule = GlassCapsuleView(views: [completeButton])
         colorCapsule = GlassCapsuleView(views: colorButtons, horizontalPadding: 5)
+        actionCapsule = GlassCapsuleView(
+            views: [newButton, lockButton, pinButton, arrangeButton],
+            horizontalPadding: 3,
+            spacing: 2
+        )
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
@@ -61,11 +67,6 @@ final class StickyToolbarView: NSView {
             button.action = #selector(selectColor(_:))
         }
 
-        let actionCapsule = GlassCapsuleView(
-            views: [newButton, lockButton, pinButton, arrangeButton],
-            horizontalPadding: 3,
-            spacing: 2
-        )
         for capsule in [leadingCapsule, colorCapsule, actionCapsule] {
             addSubview(capsule)
         }
@@ -112,12 +113,14 @@ final class StickyToolbarView: NSView {
         lockButton.accentColor = color.accent
     }
 
-    /// A locked note hides what would change it: the complete button and the colors.
+    /// A locked note hides what would change it: the complete button and the colors. The
+    /// buttons left lose their glass, like the rest of the flat note.
     func update(isLocked: Bool) {
         lockButton.setSymbol(isLocked ? "lock.fill" : "lock.open", tip: isLocked ? "解锁" : "锁定")
         lockButton.isActive = isLocked
         leadingCapsule.isHidden = isLocked
         colorCapsule.isHidden = isLocked
+        actionCapsule.isFlat = isLocked
     }
 
     @objc private func selectColor(_ sender: ColorDotButton) { delegate?.didChooseColor(sender.noteColor) }

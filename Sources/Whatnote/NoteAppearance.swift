@@ -6,6 +6,11 @@ enum NoteAppearance {
     static let bodyFontSize: CGFloat = 16
     static let cornerRadius: CGFloat = 16
 
+    /// A locked note looks like a large desktop widget: fixed size, flat and a little see-through.
+    static let lockedSize = NSSize(width: 344, height: 342)
+    static let lockedCornerRadius: CGFloat = 25
+    static let lockedPaperAlpha: CGFloat = 0.85
+
     /// Floating glass controls: the top strip doubles as the drag handle,
     /// and text scrolls underneath both bars.
     static let topBarHeight: CGFloat = 44

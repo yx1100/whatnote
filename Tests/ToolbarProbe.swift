@@ -53,8 +53,17 @@ struct ToolbarProbe {
         lockedNote.isLocked = true
         let lockedRoot = StickyRootView(note: lockedNote)
         guard !lockedRoot.textView.isEditable, lockedRoot.textView.isSelectable, lockedRoot.footer.isHidden else { exit(27) }
+        // Locked paper is flat (no border), rounder and a little see-through; unlocking restores it.
+        let lockedPaper = lockedRoot.layer
+        guard lockedPaper?.cornerRadius == NoteAppearance.lockedCornerRadius, lockedPaper?.borderWidth == 0,
+              lockedPaper?.backgroundColor?.alpha == NoteAppearance.lockedPaperAlpha,
+              descendants(of: lockedRoot.toolbar).compactMap({ $0 as? GlassCapsuleView }).filter(\.isFlat).count == 1 else { exit(29) }
         lockedRoot.updateLock(false)
         guard lockedRoot.textView.isEditable, !lockedRoot.footer.isHidden else { exit(28) }
+        let openPaper = lockedRoot.layer
+        guard openPaper?.cornerRadius == NoteAppearance.cornerRadius, openPaper?.borderWidth == 0.5,
+              openPaper?.backgroundColor?.alpha == 1,
+              descendants(of: lockedRoot.toolbar).compactMap({ $0 as? GlassCapsuleView }).allSatisfy({ !$0.isFlat }) else { exit(30) }
 
         // Empty space between the capsules is the drag handle.
         toolbar.frame = NSRect(x: 0, y: 0, width: 300, height: NoteAppearance.topBarHeight)
