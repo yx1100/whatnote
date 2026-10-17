@@ -61,13 +61,13 @@ enum NoteAppearance {
     static let paragraphSpacing: CGFloat = 8
 
     /// Earlier text sizes, keyed by their body size: body, headings and inline code map to today's sizes
-    /// (headings 32, 24 and 20 pt). No old size may equal a size of today, or text would be converted
+    /// (headings 28, 23 and 21 pt). No old size may equal a size of today, or text would be converted
     /// again on every load; that is why the 24 pt body era, whose headings overlap, is gone.
-    /// Checked in this order: the 16 pt era is the one right before the Markdown heading sizes.
+    /// Checked in this order: the 16 pt era holds the earlier heading sizes (22, 19, 17 and 32, 24, 20).
     private static let legacySizes: [(body: CGFloat, sizes: [CGFloat: CGFloat])] = [
-        (16, [22: 32, 19: 24, 17: 20]),
-        (13, [13: 16, 20: 32, 17: 24, 15: 20, 12: 15]),
-        (18, [18: 16, 26: 32, 22: 24, 20: 20, 17: 15])
+        (16, [22: 28, 19: 23, 17: 21, 32: 28, 24: 23, 20: 21]),
+        (13, [13: 16, 20: 28, 17: 23, 15: 21, 12: 15]),
+        (18, [18: 16, 26: 28, 22: 23, 20: 21, 17: 15])
     ]
 
     /// Resizes text saved with an earlier body size. Returns whether anything changed.

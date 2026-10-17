@@ -96,8 +96,8 @@ for test_script in scripts/test-*.sh; do "$test_script"; done
 生成 DMG：
 
 ```bash
-MARKETING_VERSION=1.5.0 BUILD_NUMBER=8 ./scripts/build-app.sh
-./scripts/make-dmg.sh 1.5.0
+MARKETING_VERSION=1.5.1 BUILD_NUMBER=8 ./scripts/build-app.sh
+./scripts/make-dmg.sh 1.5.1
 ```
 
 ## 许可证
