@@ -12,7 +12,7 @@ struct ToolbarProbe {
 
         let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
         let labels = buttons.compactMap { $0.accessibilityLabel() }
-        let expected = ["完成", "粉色", "黄色", "蓝色", "绿色", "新建便签", "置顶", "排列便签"]
+        let expected = ["完成", "粉色", "黄色", "蓝色", "绿色", "新建便签", "锁定", "置顶", "排列便签"]
         guard labels == expected else { exit(2) }
         guard descendants(of: toolbar).filter({ $0 is GlassCapsuleView }).count == 3 else { exit(1) }
 
@@ -34,6 +34,27 @@ struct ToolbarProbe {
         guard let pin = buttons.first(where: { $0.accessibilityLabel() == "取消置顶" }) as? NoteToolButton,
               pin.isActive,
               colorButtons.first(where: { $0.selectedColor })?.noteColor == .pink else { exit(14) }
+
+        // The lock sits next to the pin; locking hides the complete button and the colors.
+        guard let lock = buttons.first(where: { $0.accessibilityLabel() == "锁定" }) as? NoteToolButton else { exit(23) }
+        lock.performClick(nil)
+        guard delegate.lockCount == 1 else { exit(24) }
+        toolbar.update(isLocked: true)
+        let capsules = descendants(of: toolbar).compactMap { $0 as? GlassCapsuleView }
+        guard lock.accessibilityLabel() == "解锁", lock.isActive,
+              capsules.filter(\.isHidden).count == 2 else { exit(25) }
+        toolbar.update(isLocked: false)
+        guard lock.accessibilityLabel() == "锁定", !lock.isActive,
+              capsules.allSatisfy({ !$0.isHidden }) else { exit(26) }
+
+        // A locked note can be read but not edited, and has no formatting bar.
+        var lockedNote = StickyNote.fresh()
+        lockedNote.text = "☐ 待办"
+        lockedNote.isLocked = true
+        let lockedRoot = StickyRootView(note: lockedNote)
+        guard !lockedRoot.textView.isEditable, lockedRoot.textView.isSelectable, lockedRoot.footer.isHidden else { exit(27) }
+        lockedRoot.updateLock(false)
+        guard lockedRoot.textView.isEditable, !lockedRoot.footer.isHidden else { exit(28) }
 
         // Empty space between the capsules is the drag handle.
         toolbar.frame = NSRect(x: 0, y: 0, width: 300, height: NoteAppearance.topBarHeight)
@@ -102,6 +123,7 @@ private final class ToolbarDelegateProbe: StickyToolbarDelegate {
     var orderedCount = 0
     var dividerCount = 0
     var codeBlockCount = 0
+    var lockCount = 0
 
     func didChooseColor(_ color: NoteColor) {}
     func didTapArrange() { arrangeCount += 1 }
@@ -116,5 +138,6 @@ private final class ToolbarDelegateProbe: StickyToolbarDelegate {
     func didTapImage() {}
     func didTapNew() {}
     func didTapPin() {}
+    func didTapLock() { lockCount += 1 }
     func didTapComplete() {}
 }

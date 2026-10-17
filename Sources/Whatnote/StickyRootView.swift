@@ -18,7 +18,7 @@ final class StickyRootView: NSView {
     private var hasScrolledToTop = false
 
     init(note: StickyNote) {
-        toolbar = StickyToolbarView(color: note.color, isPinned: note.isPinned)
+        toolbar = StickyToolbarView(color: note.color, isPinned: note.isPinned, isLocked: note.isLocked)
         super.init(frame: .zero)
         // Notes are paper-colored in both light and dark mode, so keep light controls and text.
         appearance = NSAppearance(named: .aqua)
@@ -92,6 +92,7 @@ final class StickyRootView: NSView {
             footer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -NoteAppearance.barMargin)
         ])
         updateColor(note.color)
+        updateLock(note.isLocked)
         layer?.borderWidth = 0.5
         layer?.borderColor = NSColor.black.withAlphaComponent(0.12).cgColor
     }
@@ -105,6 +106,14 @@ final class StickyRootView: NSView {
         hasScrolledToTop = true
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: -NoteAppearance.topBarHeight))
         scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    /// Locked: the text can be read, scrolled and copied but not changed, and the formatting
+    /// bar goes away.
+    func updateLock(_ isLocked: Bool) {
+        textView.isLocked = isLocked
+        footer.isHidden = isLocked
+        toolbar.update(isLocked: isLocked)
     }
 
     func updateColor(_ color: NoteColor) {
