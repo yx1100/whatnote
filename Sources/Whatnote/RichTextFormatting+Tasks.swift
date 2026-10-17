@@ -83,7 +83,7 @@ extension RichTextFormatting {
         return true
     }
 
-    /// Tab and ⇧Tab on checklist items: indent by one step, at most one deeper than the item above.
+    /// Tab and ⇧Tab on checklist items: indent by one step, at most one deeper than the list item above, whatever its kind.
     static func adjustTodoLevel(in textView: NSTextView, starts: [Int], delta: Int) -> Bool {
         guard let storage = textView.textStorage else { return false }
         let string = storage.string as NSString
@@ -96,12 +96,7 @@ extension RichTextFormatting {
             let current = level(at: start)
             var requested = min(maximumListLevel, max(0, current + delta))
             if delta > 0 {
-                var parentLimit = 0
-                if start > 0 {
-                    let previous = string.paragraphRange(for: NSRange(location: start - 1, length: 0)).location
-                    if todoState(in: storage.string, at: previous) != .plain { parentLimit = level(at: previous) + 1 }
-                }
-                requested = min(requested, parentLimit)
+                requested = min(requested, previousListLevel(before: start, storage: storage).map { $0 + 1 } ?? 0)
             }
             guard requested != current else { continue }
             let paragraph = string.paragraphRange(for: NSRange(location: start, length: 0))

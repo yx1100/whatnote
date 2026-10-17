@@ -628,6 +628,20 @@ struct RichTextProbe {
         todoIndentEditor.setSelectedRange(NSRange(location: 5, length: 0))
         let secondTodoIndents = RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
             && (todoIndentEditor.textStorage?.attribute(.paragraphStyle, at: 4, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        // Bullets and checklist items nest under a list item of another kind.
+        let bulletUnderTodoEditor = NSTextView()
+        bulletUnderTodoEditor.isRichText = true
+        bulletUnderTodoEditor.string = "☐ 甲\n• "
+        bulletUnderTodoEditor.setSelectedRange(NSRange(location: 6, length: 0))
+        let bulletUnderTodo = RichTextFormatting.adjustBulletLevel(in: bulletUnderTodoEditor, delta: 1)
+            && bulletUnderTodoEditor.string == "☐ 甲\n∘ "
+        let todoUnderBulletEditor = NSTextView()
+        todoUnderBulletEditor.isRichText = true
+        todoUnderBulletEditor.string = "1. 一\n☐ 乙"
+        todoUnderBulletEditor.setSelectedRange(NSRange(location: 6, length: 0))
+        let todoUnderOrdered = RichTextFormatting.adjustBulletLevel(in: todoUnderBulletEditor, delta: 1)
+            && (todoUnderBulletEditor.textStorage?.attribute(.paragraphStyle, at: 5, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        let mixedNesting = bulletUnderTodo && todoUnderOrdered
         // An empty item takes the type of the list Markdown typed after its marker.
         let switchedType = convertedEditor("• 1. ").string == "1. "
             && convertedEditor("1. [] ").string == "☐ "
@@ -635,8 +649,8 @@ struct RichTextProbe {
             && convertedEditor("• 【】 ").string == "☐ "
         let nestedMarkdown = ListMarker.length(in: "1.2. 项", atParagraphStart: 0) == 5
             && ListMarker.markdown(from: "1. 一\n1.1. 二") == "1. 一\n   1. 二"
-        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && switchedType && nestedMarkdown
-        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) switch=\(switchedType) markdown=\(nestedMarkdown)")
+        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && mixedNesting && switchedType && nestedMarkdown
+        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) mixed=\(mixedNesting) switch=\(switchedType) markdown=\(nestedMarkdown)")
 
         // Text that came in without a font (AppKit's small default) gets the body font back.
         let fontlessEditor = NSTextView()

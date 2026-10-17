@@ -100,7 +100,7 @@ extension RichTextFormatting {
             let requestedLevel = min(maximumListLevel, max(0, currentLevel + delta))
             let newLevel: Int
             if delta > 0 {
-                let parentLimit = previousBulletLevel(before: start, storage: storage).map { $0 + 1 } ?? 0
+                let parentLimit = previousListLevel(before: start, storage: storage).map { $0 + 1 } ?? 0
                 newLevel = min(requestedLevel, parentLimit)
             } else {
                 newLevel = requestedLevel
@@ -182,11 +182,15 @@ extension RichTextFormatting {
         return changed
     }
 
-    static func previousBulletLevel(before start: Int, storage: NSTextStorage) -> Int? {
+    /// Nesting level of the list item right above `start` (bullet, to-do or numbered), or nil
+    /// when that line is not a list item.
+    static func previousListLevel(before start: Int, storage: NSTextStorage) -> Int? {
         guard start > 0, storage.length > 0 else { return nil }
-        let previousRange = (storage.string as NSString).paragraphRange(for: NSRange(location: start - 1, length: 0))
-        guard hasBullet(in: storage.string, at: previousRange.location) else { return nil }
-        let style = storage.attribute(.paragraphStyle, at: previousRange.location, effectiveRange: nil) as? NSParagraphStyle
+        let previous = (storage.string as NSString).paragraphRange(for: NSRange(location: start - 1, length: 0)).location
+        if let ordered = orderedMarker(in: storage.string, at: previous) { return ordered.components.count - 1 }
+        guard hasBullet(in: storage.string, at: previous)
+            || todoState(in: storage.string, at: previous) != .plain else { return nil }
+        let style = storage.attribute(.paragraphStyle, at: previous, effectiveRange: nil) as? NSParagraphStyle
         return max(0, Int(round((style?.firstLineHeadIndent ?? 0) / listIndentStep)))
     }
 
