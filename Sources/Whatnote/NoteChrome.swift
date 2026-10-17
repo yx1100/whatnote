@@ -76,7 +76,7 @@ final class NoteToolButton: NSButton {
     private var isHovered = false { didSet { needsDisplay = true } }
 
     /// Symbols at the same point size differ in width; a wide one can use a smaller `pointSize`.
-    private let pointSize: CGFloat
+    private var pointSize: CGFloat
 
     init(symbol: String, fallbackSymbol: String? = nil, tip: String, pointSize: CGFloat = 13, action: Selector) {
         self.pointSize = pointSize
@@ -129,7 +129,8 @@ final class NoteToolButton: NSButton {
         }
     }
 
-    func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String) {
+    func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String, pointSize: CGFloat? = nil) {
+        if let pointSize { self.pointSize = pointSize }
         let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
         let symbolImage = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)
             ?? fallbackSymbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: tip) }

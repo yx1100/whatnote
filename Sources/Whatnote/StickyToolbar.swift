@@ -22,7 +22,7 @@ protocol StickyToolbarDelegate: AnyObject {
 
 /// The top strip is the drag handle. It holds three glass capsules:
 /// complete on the left, colors and note actions (new, lock, pin, arrange) on the right.
-/// A locked note shows only the note actions.
+/// A locked note shows only the lock and pin buttons.
 final class StickyToolbarView: NSView {
     weak var delegate: StickyToolbarDelegate?
     private let arrangeButton: NoteToolButton
@@ -114,14 +114,21 @@ final class StickyToolbarView: NSView {
         lockButton.accentColor = color.accent
     }
 
-    /// A locked note hides what would change it: the complete button and the colors. The
-    /// buttons left lose their glass, like the rest of the flat note.
+    /// A locked note hides what would change it or add to it: the complete button, the colors,
+    /// new and arrange. The two buttons left lose their glass, like the rest of the flat note.
     func update(isLocked: Bool) {
-        lockButton.setSymbol(isLocked ? "lock.fill" : "lock.open", tip: isLocked ? "解锁" : "锁定")
+        // The filled lock is drawn smaller than the pin at the same point size; 15 pt matches its height.
+        lockButton.setSymbol(
+            isLocked ? "lock.fill" : "lock.open",
+            tip: isLocked ? "解锁" : "锁定",
+            pointSize: isLocked ? 15 : 13
+        )
         lockButton.isActive = isLocked
         leadingCapsule.isHidden = isLocked
         colorCapsule.isHidden = isLocked
         actionCapsule.isFlat = isLocked
+        newButton.isHidden = isLocked
+        arrangeButton.isHidden = isLocked
         // The lock button is the one handle that moves a locked note.
         lockButton.onBeginDrag = isLocked ? { [weak self] event in self?.delegate?.didBeginLockDrag(with: event) } : nil
     }

@@ -44,8 +44,10 @@ struct ToolbarProbe {
         guard lock.accessibilityLabel() == "解锁", lock.isActive,
               capsules.filter(\.isHidden).count == 2 else { exit(25) }
         guard lock.onBeginDrag != nil else { exit(31) }
+        let hiddenWhenLocked = buttons.filter(\.isHidden).compactMap { $0.accessibilityLabel() }
+        guard hiddenWhenLocked == ["新建便签", "排列便签"] else { exit(32) }
         toolbar.update(isLocked: false)
-        guard lock.onBeginDrag == nil, lock.accessibilityLabel() == "锁定", !lock.isActive,
+        guard lock.onBeginDrag == nil, buttons.allSatisfy({ !$0.isHidden }), lock.accessibilityLabel() == "锁定", !lock.isActive,
               capsules.allSatisfy({ !$0.isHidden }) else { exit(26) }
 
         // A locked note can be read but not edited, and has no formatting bar.
