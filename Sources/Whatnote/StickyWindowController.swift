@@ -66,7 +66,9 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         let repairedBullets = RichTextFormatting.normalizeBulletMarkers(in: rootView.textView)
         let repairedTodos = RichTextFormatting.normalizeTodoMarkers(in: rootView.textView)
         let alignedLists = rootView.textView.textStorage.map(RichTextFormatting.alignListContinuationLines) ?? false
-        if repairedBullets || repairedTodos || alignedLists {
+        let upgradedSizes = note.fontGeneration < NoteAppearance.fontGeneration
+        if repairedBullets || repairedTodos || alignedLists || upgradedSizes {
+            self.note.fontGeneration = NoteAppearance.fontGeneration
             self.note.text = rootView.textView.string
             self.note.richTextData = rootView.textView.textStorage.flatMap(RichTextCodec.encode)
             NoteStore.shared.update(self.note)

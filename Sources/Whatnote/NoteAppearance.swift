@@ -60,19 +60,24 @@ enum NoteAppearance {
     static let lineSpacing: CGFloat = 3
     static let paragraphSpacing: CGFloat = 8
 
+    /// Bumped whenever the text sizes change. A note saved with an older number is converted once,
+    /// when it loads, and saved with this one; that is what lets an old size equal a size of today.
+    static let fontGeneration = 3
+
     /// Earlier text sizes, keyed by their body size: body, headings and inline code map to today's sizes
-    /// (headings 28, 23 and 21 pt). No old size may equal a size of today, or text would be converted
-    /// again on every load; that is why the 24 pt body era, whose headings overlap, is gone.
-    /// Checked in this order: the 16 pt era holds the earlier heading sizes (22, 19, 17 and 32, 24, 20).
+    /// (headings 24, 22 and 20 pt). The 16 pt era holds the headings of every earlier version
+    /// (22, 19, 17 and 32, 24, 20 and 28, 23, 21), none of which share a size with another.
+    /// Checked in this order.
     private static let legacySizes: [(body: CGFloat, sizes: [CGFloat: CGFloat])] = [
-        (16, [22: 28, 19: 23, 17: 21, 32: 28, 24: 23, 20: 21]),
-        (13, [13: 16, 20: 28, 17: 23, 15: 21, 12: 15]),
-        (18, [18: 16, 26: 28, 22: 23, 20: 21, 17: 15])
+        (16, [22: 24, 19: 22, 17: 20, 32: 24, 24: 22, 28: 24, 23: 22, 21: 20]),
+        (13, [13: 16, 20: 24, 17: 22, 15: 20, 12: 15]),
+        (18, [18: 16, 26: 24, 17: 15])
     ]
 
-    /// Resizes text saved with an earlier body size. Returns whether anything changed.
+    /// Resizes text of a note saved before `fontGeneration`. Returns whether anything changed.
     @discardableResult
-    static func upgradeLegacyFontSizes(in text: NSMutableAttributedString) -> Bool {
+    static func upgradeLegacyFontSizes(in text: NSMutableAttributedString, from generation: Int = 0) -> Bool {
+        guard generation < fontGeneration else { return false }
         let whole = NSRange(location: 0, length: text.length)
         var sizes = Set<CGFloat>()
         text.enumerateAttribute(.font, in: whole) { value, _, _ in

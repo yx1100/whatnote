@@ -65,7 +65,7 @@ final class StickyRootView: NSView {
         if let restored = RichTextCodec.decode(note.richTextData) {
             textView.textStorage?.setAttributedString(restored)
             if let storage = textView.textStorage {
-                NoteAppearance.upgradeLegacyFontSizes(in: storage)
+                NoteAppearance.upgradeLegacyFontSizes(in: storage, from: note.fontGeneration)
                 NoteAppearance.repairFonts(in: storage)
                 NoteImages.fitAttachments(in: storage)
             }

@@ -115,8 +115,7 @@ enum RichTextFormatting {
         textView.didChangeText()
     }
 
-    /// Heading sizes for #, ## and ###. They must stay clear of every size in `legacySizes`.
-    static let headingSizes: [CGFloat] = [28, 23, 21]
+    static let headingSizes: [CGFloat] = [24, 22, 20]
 
     static func headingFont(level: Int) -> NSFont {
         let clamped = min(max(level, 1), headingSizes.count)
