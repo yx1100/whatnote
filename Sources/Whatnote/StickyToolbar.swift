@@ -5,6 +5,7 @@ protocol StickyToolbarDelegate: AnyObject {
     func didChooseColor(_ color: NoteColor)
     func didTapArrange()
     func didBeginToolbarDrag(with event: NSEvent)
+    func didBeginLockDrag(with event: NSEvent)
     func didTapBold()
     func didTapBulletList()
     func didTapOrderedList()
@@ -121,6 +122,8 @@ final class StickyToolbarView: NSView {
         leadingCapsule.isHidden = isLocked
         colorCapsule.isHidden = isLocked
         actionCapsule.isFlat = isLocked
+        // The lock button is the one handle that moves a locked note.
+        lockButton.onBeginDrag = isLocked ? { [weak self] event in self?.delegate?.didBeginLockDrag(with: event) } : nil
     }
 
     @objc private func selectColor(_ sender: ColorDotButton) { delegate?.didChooseColor(sender.noteColor) }

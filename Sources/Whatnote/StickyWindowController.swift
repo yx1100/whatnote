@@ -193,6 +193,14 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
 
     func didTapArrange() { appController?.arrangeNotes() }
 
+    /// Dragging from the lock button moves a locked note, which is otherwise fixed in place.
+    func didBeginLockDrag(with event: NSEvent) {
+        let window = windowResidency.activeWindow
+        window.isMovable = true
+        window.performDrag(with: event)
+        window.isMovable = !note.isLocked
+    }
+
     func didBeginToolbarDrag(with event: NSEvent) {
         guard !note.isLocked else { return }
         appController?.beginDragging(noteID: note.id, event: event)

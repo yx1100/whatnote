@@ -107,6 +107,28 @@ final class NoteToolButton: NSButton {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// When set, pressing the button and dragging calls this with the drag event instead of
+    /// clicking; a press without a drag still clicks.
+    var onBeginDrag: ((NSEvent) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        guard let onBeginDrag else {
+            super.mouseDown(with: event)
+            return
+        }
+        let start = event.locationInWindow
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            if next.type == .leftMouseUp {
+                if bounds.contains(convert(next.locationInWindow, from: nil)) { sendAction(action, to: target) }
+                return
+            }
+            if hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y) > 3 {
+                onBeginDrag(next)
+                return
+            }
+        }
+    }
+
     func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String) {
         let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
         let symbolImage = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)

@@ -43,8 +43,9 @@ struct ToolbarProbe {
         let capsules = descendants(of: toolbar).compactMap { $0 as? GlassCapsuleView }
         guard lock.accessibilityLabel() == "解锁", lock.isActive,
               capsules.filter(\.isHidden).count == 2 else { exit(25) }
+        guard lock.onBeginDrag != nil else { exit(31) }
         toolbar.update(isLocked: false)
-        guard lock.accessibilityLabel() == "锁定", !lock.isActive,
+        guard lock.onBeginDrag == nil, lock.accessibilityLabel() == "锁定", !lock.isActive,
               capsules.allSatisfy({ !$0.isHidden }) else { exit(26) }
 
         // A locked note can be read but not edited, and has no formatting bar.
@@ -148,5 +149,6 @@ private final class ToolbarDelegateProbe: StickyToolbarDelegate {
     func didTapNew() {}
     func didTapPin() {}
     func didTapLock() { lockCount += 1 }
+    func didBeginLockDrag(with event: NSEvent) {}
     func didTapComplete() {}
 }
