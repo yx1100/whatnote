@@ -115,7 +115,8 @@ enum RichTextFormatting {
         textView.didChangeText()
     }
 
-    static let headingSizes: [CGFloat] = [22, 19, 17]
+    /// The sizes of Markdown's # and ## (2 and 1.5 times the body) and of GitHub's ###.
+    static let headingSizes: [CGFloat] = [32, 24, 20]
 
     static func headingFont(level: Int) -> NSFont {
         let clamped = min(max(level, 1), headingSizes.count)
