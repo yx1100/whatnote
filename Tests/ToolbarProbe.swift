@@ -61,6 +61,9 @@ struct ToolbarProbe {
         guard lockedPaper?.cornerRadius == NoteAppearance.lockedCornerRadius, lockedPaper?.borderWidth == 0,
               lockedPaper?.backgroundColor?.alpha == NoteAppearance.lockedPaperAlpha,
               descendants(of: lockedRoot.toolbar).compactMap({ $0 as? GlassCapsuleView }).filter(\.isFlat).count == 1 else { exit(29) }
+        // Typed text never takes the small symbol font of the to-do circle.
+        lockedRoot.textView.typingAttributes = [.font: NSFont(name: "AppleSymbols", size: 16)!]
+        guard !NoteAppearance.isSymbolFont(lockedRoot.textView.typingAttributes[.font] as? NSFont) else { exit(33) }
         lockedRoot.updateLock(false)
         guard lockedRoot.textView.isEditable, !lockedRoot.footer.isHidden else { exit(28) }
         let openPaper = lockedRoot.layer

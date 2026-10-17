@@ -33,12 +33,24 @@ enum NoteAppearance {
         return font
     }
 
-    /// Gives text without a note font the body font. Returns whether anything changed.
+    /// Apple Symbols draws the to-do circle and list bullets, but its Latin letters are small.
+    static func isSymbolFont(_ font: NSFont?) -> Bool { font?.familyName == "Apple Symbols" }
+
+    /// Gives text without a note font the body font, and letters and digits drawn in the symbol
+    /// font (markers and spaces keep it). Returns whether anything changed.
     @discardableResult
     static func repairFonts(in text: NSMutableAttributedString) -> Bool {
         var repairs: [NSRange] = []
+        let string = text.string as NSString
         text.enumerateAttribute(.font, in: NSRange(location: 0, length: text.length)) { value, range, _ in
-            if noteFont(value as? NSFont) !== value as? NSFont { repairs.append(range) }
+            if noteFont(value as? NSFont) !== value as? NSFont {
+                repairs.append(range)
+            } else if isSymbolFont(value as? NSFont) {
+                for index in range.location..<NSMaxRange(range)
+                where CharacterSet.alphanumerics.contains(Unicode.Scalar(string.character(at: index)) ?? " ") {
+                    repairs.append(NSRange(location: index, length: 1))
+                }
+            }
         }
         for range in repairs { text.addAttribute(.font, value: bodyFont(), range: range) }
         return !repairs.isEmpty

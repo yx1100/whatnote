@@ -121,7 +121,8 @@ final class StickyToolbarView: NSView {
         lockButton.setSymbol(
             isLocked ? "lock.fill" : "lock.open",
             tip: isLocked ? "解锁" : "锁定",
-            pointSize: isLocked ? 15 : 13
+            pointSize: isLocked ? 15 : 13,
+            lift: isLocked ? 1.5 : 0
         )
         lockButton.isActive = isLocked
         leadingCapsule.isHidden = isLocked

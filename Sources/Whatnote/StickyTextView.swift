@@ -18,11 +18,13 @@ enum StickyEditingShortcut: Equatable {
 final class StickyTextView: NSTextView {
     /// Typed text always gets a note font. Without one AppKit falls back to its small default,
     /// which shows up as small Latin letters while input methods (Chinese) still look right.
+    /// The symbol font of the to-do circle is just as small for letters, so it is no note font either.
     override var typingAttributes: [NSAttributedString.Key: Any] {
         get { super.typingAttributes }
         set {
             var attributes = newValue
-            attributes[.font] = NoteAppearance.noteFont(attributes[.font] as? NSFont)
+            let font = attributes[.font] as? NSFont
+            attributes[.font] = NoteAppearance.isSymbolFont(font) ? NoteAppearance.bodyFont() : NoteAppearance.noteFont(font)
             super.typingAttributes = attributes
         }
     }

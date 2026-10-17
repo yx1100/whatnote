@@ -661,7 +661,19 @@ struct RichTextProbe {
         let fontsRepaired = (0..<3).allSatisfy {
             (fontlessEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)?.pointSize == NoteAppearance.bodyFontSize
         }
-        print("fontsRepaired=\(fontsRepaired)")
+        // Letters drawn in the symbol font (small) get the body font; the to-do marker keeps it.
+        let symbolFont = NSFont(name: "AppleSymbols", size: 16)!
+        let symbolEditor = NSTextView()
+        symbolEditor.isRichText = true
+        symbolEditor.textStorage?.setAttributedString(NSAttributedString(
+            string: "☐ 反编译hapigo\n",
+            attributes: [.font: symbolFont]
+        ))
+        RichTextFormatting.applyMarkdownSyntax(in: symbolEditor)
+        let repairedLetters = (2..<11).allSatisfy {
+            !NoteAppearance.isSymbolFont(symbolEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)
+        } && NoteAppearance.isSymbolFont(symbolEditor.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        print("fontsRepaired=\(fontsRepaired) symbolLetters=\(repairedLetters)")
 
         // Wrapped lines of a list item start where its text starts, whatever the marker's width.
         let wrapStorage = NSTextStorage(
@@ -706,7 +718,7 @@ let numberAxis: Bool = {
                 print("bulletShapes=\(bulletShapes)")
         print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
 
-        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && repairedLetters && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")
