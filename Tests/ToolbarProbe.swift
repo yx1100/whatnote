@@ -73,6 +73,20 @@ struct ToolbarProbe {
         var shortOpen = shortNote
         shortOpen.isLocked = false
         guard scrollRange(of: StickyRootView(note: shortOpen)) > 0.5 else { exit(36) }
+        // The wheel does nothing on a locked note whose text fits.
+        func wheelMoves(_ root: StickyRootView) -> Bool {
+            _ = scrollRange(of: root)
+            let before = root.scrollView.contentView.bounds.origin.y
+            for delta in [Int32(-120), 120] {
+                guard let cg = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: delta, wheel2: 0, wheel3: 0),
+                      let event = NSEvent(cgEvent: cg) else { exit(37) }
+                root.scrollView.scrollWheel(with: event)
+                RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+                if root.scrollView.contentView.bounds.origin.y != before { return true }
+            }
+            return false
+        }
+        guard !wheelMoves(shortLocked) else { exit(38) }
         var longNote = shortNote
         longNote.text = (0..<40).map { "第\($0)行" }.joined(separator: "\n")
         guard scrollRange(of: StickyRootView(note: longNote)) > 0.5 else { exit(35) }

@@ -8,12 +8,32 @@ final class NoteScroller: NSScroller {
     override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
 }
 
+/// A scroll view that, when `ignoresWheelWhenTextFits` is on, does not respond to the wheel or
+/// trackpad while all the text fits between the bars, so it neither scrolls nor bounces.
+final class NoteScrollView: NSScrollView {
+    var ignoresWheelWhenTextFits = false
+
+    private var textOverflows: Bool {
+        guard let textView = documentView as? NSTextView,
+              let layoutManager = textView.layoutManager,
+              let container = textView.textContainer else { return true }
+        layoutManager.ensureLayout(for: container)
+        let textHeight = layoutManager.usedRect(for: container).height + 2 * textView.textContainerInset.height
+        return textHeight > bounds.height - contentInsets.top - contentInsets.bottom + 0.5
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        if ignoresWheelWhenTextFits, !textOverflows { return }
+        super.scrollWheel(with: event)
+    }
+}
+
 /// A note: colored paper whose text scrolls underneath two floating glass bars.
 final class StickyRootView: NSView {
     let toolbar: StickyToolbarView
     let footer = StickyFormattingFooterView()
     let textView = StickyTextView()
-    let scrollView = NSScrollView()
+    let scrollView = NoteScrollView()
     private let noteLayoutManager = NoteLayoutManager()
     private var hasScrolledToTop = false
     private var color: NoteColor
@@ -111,6 +131,7 @@ final class StickyRootView: NSView {
         applyPaperColor()
         footer.isHidden = isLocked
         updateScrollInsets(isLocked: isLocked)
+        scrollView.ignoresWheelWhenTextFits = isLocked
         toolbar.update(isLocked: isLocked)
     }
 
