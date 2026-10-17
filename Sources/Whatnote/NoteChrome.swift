@@ -131,7 +131,7 @@ final class NoteToolButton: NSButton {
 
     func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String, pointSize: CGFloat? = nil) {
         if let pointSize { self.pointSize = pointSize }
-        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+        let configuration = NSImage.SymbolConfiguration(pointSize: self.pointSize, weight: .medium)
         let symbolImage = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)
             ?? fallbackSymbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: tip) }
         image = symbolImage?.withSymbolConfiguration(configuration) ?? NSImage(size: NSSize(width: 14, height: 14))
