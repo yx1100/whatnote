@@ -4,12 +4,17 @@ import AppKit
 /// Liquid Glass; earlier systems get a frosted material of the same shape.
 final class GlassCapsuleView: NSView {
     let stack = NSStackView()
+    private let background: NSView
+    /// Flat: the buttons stay, the glass behind them goes.
+    var isFlat = false {
+        didSet { background.isHidden = isFlat }
+    }
 
     init(views: [NSView], horizontalPadding: CGFloat = 1, spacing: CGFloat = 0) {
+        background = Self.makeBackground(cornerRadius: NoteAppearance.capsuleHeight / 2)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
-        let background = Self.makeBackground(cornerRadius: NoteAppearance.capsuleHeight / 2)
         background.translatesAutoresizingMaskIntoConstraints = false
         addSubview(background)
 
@@ -71,7 +76,8 @@ final class NoteToolButton: NSButton {
     private var isHovered = false { didSet { needsDisplay = true } }
 
     /// Symbols at the same point size differ in width; a wide one can use a smaller `pointSize`.
-    private let pointSize: CGFloat
+    private var pointSize: CGFloat
+    private var glyphLift: CGFloat = 0
 
     init(symbol: String, fallbackSymbol: String? = nil, tip: String, pointSize: CGFloat = 13, action: Selector) {
         self.pointSize = pointSize
@@ -102,11 +108,37 @@ final class NoteToolButton: NSButton {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-    func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String) {
-        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+    /// When set, pressing the button and dragging calls this with the drag event instead of
+    /// clicking; a press without a drag still clicks.
+    var onBeginDrag: ((NSEvent) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        guard let onBeginDrag else {
+            super.mouseDown(with: event)
+            return
+        }
+        let start = event.locationInWindow
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            if next.type == .leftMouseUp {
+                if bounds.contains(convert(next.locationInWindow, from: nil)) { sendAction(action, to: target) }
+                return
+            }
+            if hypot(next.locationInWindow.x - start.x, next.locationInWindow.y - start.y) > 3 {
+                onBeginDrag(next)
+                return
+            }
+        }
+    }
+
+    /// `lift` moves the glyph up: a filled padlock has its weight in the body, which looks low when the
+    /// outline is centered.
+    func setSymbol(_ symbol: String, fallbackSymbol: String? = nil, tip: String, pointSize: CGFloat? = nil, lift: CGFloat = 0) {
+        if let pointSize { self.pointSize = pointSize }
+        let configuration = NSImage.SymbolConfiguration(pointSize: self.pointSize, weight: .medium)
         let symbolImage = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)
             ?? fallbackSymbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: tip) }
         image = symbolImage?.withSymbolConfiguration(configuration) ?? NSImage(size: NSSize(width: 14, height: 14))
+        glyphLift = lift
         toolTip = tip
         setAccessibilityLabel(tip)
     }
@@ -130,7 +162,12 @@ final class NoteToolButton: NSButton {
             NSColor.black.withAlphaComponent(0.07).setFill()
             disc.fill()
         }
+        NSGraphicsContext.saveGraphicsState()
+        let shift = NSAffineTransform()
+        shift.translateX(by: 0, yBy: isFlipped ? -glyphLift : glyphLift)
+        shift.concat()
         super.draw(dirtyRect)
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private func refreshAppearance() {

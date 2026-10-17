@@ -173,7 +173,6 @@ final class HistoryPreviewView: NSView {
         let text: NSMutableAttributedString
         if let restored = RichTextCodec.decode(note.richTextData) {
             text = NSMutableAttributedString(attributedString: restored)
-            NoteAppearance.upgradeLegacyFontSizes(in: text)
         } else {
             text = NSMutableAttributedString(string: note.text)
         }

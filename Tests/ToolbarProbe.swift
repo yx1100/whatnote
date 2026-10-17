@@ -12,7 +12,7 @@ struct ToolbarProbe {
 
         let buttons = descendants(of: toolbar).compactMap { $0 as? NSButton }
         let labels = buttons.compactMap { $0.accessibilityLabel() }
-        let expected = ["完成", "粉色", "黄色", "蓝色", "绿色", "新建便签", "置顶", "排列便签"]
+        let expected = ["完成", "粉色", "黄色", "蓝色", "绿色", "新建便签", "锁定", "置顶", "排列便签"]
         guard labels == expected else { exit(2) }
         guard descendants(of: toolbar).filter({ $0 is GlassCapsuleView }).count == 3 else { exit(1) }
 
@@ -34,6 +34,77 @@ struct ToolbarProbe {
         guard let pin = buttons.first(where: { $0.accessibilityLabel() == "取消置顶" }) as? NoteToolButton,
               pin.isActive,
               colorButtons.first(where: { $0.selectedColor })?.noteColor == .pink else { exit(14) }
+
+        // The lock sits next to the pin; locking hides the complete button and the colors.
+        guard let lock = buttons.first(where: { $0.accessibilityLabel() == "锁定" }) as? NoteToolButton else { exit(23) }
+        lock.performClick(nil)
+        guard delegate.lockCount == 1 else { exit(24) }
+        toolbar.update(isLocked: true)
+        let capsules = descendants(of: toolbar).compactMap { $0 as? GlassCapsuleView }
+        guard lock.accessibilityLabel() == "解锁", lock.isActive,
+              capsules.filter(\.isHidden).count == 2 else { exit(25) }
+        guard lock.onBeginDrag != nil else { exit(31) }
+        let hiddenWhenLocked = buttons.filter(\.isHidden).compactMap { $0.accessibilityLabel() }
+        guard hiddenWhenLocked == ["新建便签", "排列便签"] else { exit(32) }
+        toolbar.update(isLocked: false)
+        guard lock.onBeginDrag == nil, buttons.allSatisfy({ !$0.isHidden }), lock.accessibilityLabel() == "锁定", !lock.isActive,
+              capsules.allSatisfy({ !$0.isHidden }) else { exit(26) }
+
+        // A locked note can be read but not edited, and has no formatting bar.
+        var lockedNote = StickyNote.fresh()
+        lockedNote.text = "☐ 待办"
+        lockedNote.isLocked = true
+        let lockedRoot = StickyRootView(note: lockedNote)
+        guard !lockedRoot.textView.isEditable, lockedRoot.textView.isSelectable, lockedRoot.footer.isHidden else { exit(27) }
+        // A locked note whose text fits does not scroll; the same text in an open note still leaves room under the formatting bar.
+        func scrollRange(of root: StickyRootView) -> CGFloat {
+            let host = NSWindow(contentRect: NSRect(origin: .zero, size: NoteAppearance.lockedSize), styleMask: [.borderless], backing: .buffered, defer: false)
+            host.contentView = root
+            root.frame = NSRect(origin: .zero, size: NoteAppearance.lockedSize)
+            root.layoutSubtreeIfNeeded()
+            let insets = root.scrollView.contentInsets
+            return root.textView.frame.height + insets.top + insets.bottom - root.scrollView.contentView.bounds.height
+        }
+        var shortNote = StickyNote.fresh()
+        shortNote.text = (1...10).map { "第\($0)行" }.joined(separator: "\n")
+        shortNote.isLocked = true
+        let shortLocked = StickyRootView(note: shortNote)
+        guard scrollRange(of: shortLocked) <= 0.5 else { exit(34) }
+        var shortOpen = shortNote
+        shortOpen.isLocked = false
+        guard scrollRange(of: StickyRootView(note: shortOpen)) > 0.5 else { exit(36) }
+        // The wheel does nothing on a locked note whose text fits.
+        func wheelMoves(_ root: StickyRootView) -> Bool {
+            _ = scrollRange(of: root)
+            let before = root.scrollView.contentView.bounds.origin.y
+            for delta in [Int32(-120), 120] {
+                guard let cg = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: delta, wheel2: 0, wheel3: 0),
+                      let event = NSEvent(cgEvent: cg) else { exit(37) }
+                root.scrollView.scrollWheel(with: event)
+                RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+                if root.scrollView.contentView.bounds.origin.y != before { return true }
+            }
+            return false
+        }
+        guard !wheelMoves(shortLocked) else { exit(38) }
+        var longNote = shortNote
+        longNote.text = (0..<40).map { "第\($0)行" }.joined(separator: "\n")
+        guard scrollRange(of: StickyRootView(note: longNote)) > 0.5 else { exit(35) }
+
+        // Locked paper is flat (no border), rounder and a little see-through; unlocking restores it.
+        let lockedPaper = lockedRoot.layer
+        guard lockedPaper?.cornerRadius == NoteAppearance.lockedCornerRadius, lockedPaper?.borderWidth == 0,
+              lockedPaper?.backgroundColor?.alpha == NoteAppearance.lockedPaperAlpha,
+              descendants(of: lockedRoot.toolbar).compactMap({ $0 as? GlassCapsuleView }).filter(\.isFlat).count == 1 else { exit(29) }
+        // Typed text never takes the small symbol font of the to-do circle.
+        lockedRoot.textView.typingAttributes = [.font: NSFont(name: "AppleSymbols", size: 16)!]
+        guard !NoteAppearance.isSymbolFont(lockedRoot.textView.typingAttributes[.font] as? NSFont) else { exit(33) }
+        lockedRoot.updateLock(false)
+        guard lockedRoot.textView.isEditable, !lockedRoot.footer.isHidden else { exit(28) }
+        let openPaper = lockedRoot.layer
+        guard openPaper?.cornerRadius == NoteAppearance.cornerRadius, openPaper?.borderWidth == 0.5,
+              openPaper?.backgroundColor?.alpha == 1,
+              descendants(of: lockedRoot.toolbar).compactMap({ $0 as? GlassCapsuleView }).allSatisfy({ !$0.isFlat }) else { exit(30) }
 
         // Empty space between the capsules is the drag handle.
         toolbar.frame = NSRect(x: 0, y: 0, width: 300, height: NoteAppearance.topBarHeight)
@@ -102,6 +173,7 @@ private final class ToolbarDelegateProbe: StickyToolbarDelegate {
     var orderedCount = 0
     var dividerCount = 0
     var codeBlockCount = 0
+    var lockCount = 0
 
     func didChooseColor(_ color: NoteColor) {}
     func didTapArrange() { arrangeCount += 1 }
@@ -116,5 +188,7 @@ private final class ToolbarDelegateProbe: StickyToolbarDelegate {
     func didTapImage() {}
     func didTapNew() {}
     func didTapPin() {}
+    func didTapLock() { lockCount += 1 }
+    func didBeginLockDrag(with event: NSEvent) {}
     func didTapComplete() {}
 }

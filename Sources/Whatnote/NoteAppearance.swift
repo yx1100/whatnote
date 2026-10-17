@@ -6,6 +6,11 @@ enum NoteAppearance {
     static let bodyFontSize: CGFloat = 16
     static let cornerRadius: CGFloat = 16
 
+    /// A locked note looks like a large desktop widget: fixed size, flat and a little see-through.
+    static let lockedSize = NSSize(width: 344, height: 342)
+    static let lockedCornerRadius: CGFloat = 25
+    static let lockedPaperAlpha: CGFloat = 0.95
+
     /// Floating glass controls: the top strip doubles as the drag handle,
     /// and text scrolls underneath both bars.
     static let topBarHeight: CGFloat = 44
@@ -28,12 +33,24 @@ enum NoteAppearance {
         return font
     }
 
-    /// Gives text without a note font the body font. Returns whether anything changed.
+    /// Apple Symbols draws the to-do circle and list bullets, but its Latin letters are small.
+    static func isSymbolFont(_ font: NSFont?) -> Bool { font?.familyName == "Apple Symbols" }
+
+    /// Gives text without a note font the body font, and letters and digits drawn in the symbol
+    /// font (markers and spaces keep it). Returns whether anything changed.
     @discardableResult
     static func repairFonts(in text: NSMutableAttributedString) -> Bool {
         var repairs: [NSRange] = []
+        let string = text.string as NSString
         text.enumerateAttribute(.font, in: NSRange(location: 0, length: text.length)) { value, range, _ in
-            if noteFont(value as? NSFont) !== value as? NSFont { repairs.append(range) }
+            if noteFont(value as? NSFont) !== value as? NSFont {
+                repairs.append(range)
+            } else if isSymbolFont(value as? NSFont) {
+                for index in range.location..<NSMaxRange(range)
+                where CharacterSet.alphanumerics.contains(Unicode.Scalar(string.character(at: index)) ?? " ") {
+                    repairs.append(NSRange(location: index, length: 1))
+                }
+            }
         }
         for range in repairs { text.addAttribute(.font, value: bodyFont(), range: range) }
         return !repairs.isEmpty
@@ -42,33 +59,4 @@ enum NoteAppearance {
     /// Line and paragraph spacing, applied by the note's layout manager to every paragraph.
     static let lineSpacing: CGFloat = 3
     static let paragraphSpacing: CGFloat = 8
-
-    /// Earlier text sizes, keyed by their body size: body, headings and inline code map to today's sizes.
-    /// Checked in this order: the earlier 16 pt era also used 24 and 18 pt, for headings.
-    private static let legacySizes: [(body: CGFloat, sizes: [CGFloat: CGFloat])] = [
-        (16, [24: 22, 20: 19, 18: 17]),
-        (13, [13: 16, 20: 22, 17: 19, 15: 17, 12: 15]),
-        (24, [24: 16, 34: 22, 30: 19, 27: 17, 23: 15]),
-        (18, [18: 16, 26: 22, 22: 19, 20: 17, 17: 15])
-    ]
-
-    /// Resizes text saved with an earlier body size. Returns whether anything changed.
-    @discardableResult
-    static func upgradeLegacyFontSizes(in text: NSMutableAttributedString) -> Bool {
-        let whole = NSRange(location: 0, length: text.length)
-        var sizes = Set<CGFloat>()
-        text.enumerateAttribute(.font, in: whole) { value, _, _ in
-            if let font = value as? NSFont { sizes.insert(font.pointSize) }
-        }
-        guard let era = legacySizes.first(where: { sizes.contains($0.body) }) else { return false }
-        var changed = false
-        text.enumerateAttribute(.font, in: whole) { value, range, _ in
-            guard let font = value as? NSFont,
-                  let newSize = era.sizes[font.pointSize],
-                  let resized = NSFont(descriptor: font.fontDescriptor, size: newSize) else { return }
-            text.addAttribute(.font, value: resized, range: range)
-            changed = true
-        }
-        return changed
-    }
 }

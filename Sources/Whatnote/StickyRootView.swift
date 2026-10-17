@@ -8,22 +8,44 @@ final class NoteScroller: NSScroller {
     override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
 }
 
+/// A scroll view that, when `ignoresWheelWhenTextFits` is on, does not respond to the wheel or
+/// trackpad while all the text fits between the bars, so it neither scrolls nor bounces.
+final class NoteScrollView: NSScrollView {
+    var ignoresWheelWhenTextFits = false
+
+    private var textOverflows: Bool {
+        guard let textView = documentView as? NSTextView,
+              let layoutManager = textView.layoutManager,
+              let container = textView.textContainer else { return true }
+        layoutManager.ensureLayout(for: container)
+        let textHeight = layoutManager.usedRect(for: container).height + 2 * textView.textContainerInset.height
+        return textHeight > bounds.height - contentInsets.top - contentInsets.bottom + 0.5
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        if ignoresWheelWhenTextFits, !textOverflows { return }
+        super.scrollWheel(with: event)
+    }
+}
+
 /// A note: colored paper whose text scrolls underneath two floating glass bars.
 final class StickyRootView: NSView {
     let toolbar: StickyToolbarView
     let footer = StickyFormattingFooterView()
     let textView = StickyTextView()
-    let scrollView = NSScrollView()
+    let scrollView = NoteScrollView()
     private let noteLayoutManager = NoteLayoutManager()
     private var hasScrolledToTop = false
+    private var color: NoteColor
+    private var isLocked = false
 
     init(note: StickyNote) {
-        toolbar = StickyToolbarView(color: note.color, isPinned: note.isPinned)
+        color = note.color
+        toolbar = StickyToolbarView(color: note.color, isPinned: note.isPinned, isLocked: note.isLocked)
         super.init(frame: .zero)
         // Notes are paper-colored in both light and dark mode, so keep light controls and text.
         appearance = NSAppearance(named: .aqua)
         wantsLayer = true
-        layer?.cornerRadius = NoteAppearance.cornerRadius
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
 
@@ -34,14 +56,7 @@ final class StickyRootView: NSView {
         scrollView.borderType = .noBorder
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.automaticallyAdjustsContentInsets = false
-        let barInsets = NSEdgeInsets(
-            top: NoteAppearance.topBarHeight,
-            left: 0,
-            bottom: NoteAppearance.bottomBarHeight,
-            right: 0
-        )
-        scrollView.contentInsets = barInsets
-        scrollView.scrollerInsets = barInsets
+        updateScrollInsets(isLocked: note.isLocked)
 
         // TextKit 1 with a layout manager that draws to-do checkboxes; TextKit 1 also sizes image attachments reliably.
         _ = textView.layoutManager
@@ -63,7 +78,6 @@ final class StickyRootView: NSView {
         if let restored = RichTextCodec.decode(note.richTextData) {
             textView.textStorage?.setAttributedString(restored)
             if let storage = textView.textStorage {
-                NoteAppearance.upgradeLegacyFontSizes(in: storage)
                 NoteAppearance.repairFonts(in: storage)
                 NoteImages.fitAttachments(in: storage)
             }
@@ -92,7 +106,7 @@ final class StickyRootView: NSView {
             footer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -NoteAppearance.barMargin)
         ])
         updateColor(note.color)
-        layer?.borderWidth = 0.5
+        updateLock(note.isLocked)
         layer?.borderColor = NSColor.black.withAlphaComponent(0.12).cgColor
     }
 
@@ -107,10 +121,43 @@ final class StickyRootView: NSView {
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
+    /// Locked: the text can be read, scrolled and copied but not changed, the formatting bar
+    /// goes away, and the paper turns flat, rounder and a little see-through.
+    func updateLock(_ isLocked: Bool) {
+        self.isLocked = isLocked
+        textView.isLocked = isLocked
+        layer?.cornerRadius = isLocked ? NoteAppearance.lockedCornerRadius : NoteAppearance.cornerRadius
+        layer?.borderWidth = isLocked ? 0 : 0.5
+        applyPaperColor()
+        footer.isHidden = isLocked
+        updateScrollInsets(isLocked: isLocked)
+        scrollView.ignoresWheelWhenTextFits = isLocked
+        toolbar.update(isLocked: isLocked)
+    }
+
+    /// Text scrolls under the top bar and the formatting bar; a locked note has no formatting
+    /// bar, so nothing is reserved below the text and short text does not scroll.
+    private func updateScrollInsets(isLocked: Bool) {
+        let insets = NSEdgeInsets(
+            top: NoteAppearance.topBarHeight,
+            left: 0,
+            bottom: isLocked ? 0 : NoteAppearance.bottomBarHeight,
+            right: 0
+        )
+        scrollView.contentInsets = insets
+        scrollView.scrollerInsets = insets
+    }
+
     func updateColor(_ color: NoteColor) {
-        layer?.backgroundColor = color.background.cgColor
+        self.color = color
+        applyPaperColor()
         footer.updateAccent(color.accent)
         noteLayoutManager.checkboxAccent = color.accent
         textView.needsDisplay = true
+    }
+
+    private func applyPaperColor() {
+        let alpha = isLocked ? NoteAppearance.lockedPaperAlpha : 1
+        layer?.backgroundColor = color.background.withAlphaComponent(alpha).cgColor
     }
 }

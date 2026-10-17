@@ -69,6 +69,10 @@ struct StickyNote: Codable, Identifiable {
     var color: NoteColor
     var frame: WindowFrame
     var isPinned: Bool
+    /// A locked note cannot be moved, resized or edited; its to-do items can still be checked.
+    var isLocked: Bool
+    /// Where a locked note was before it took the widget size; unlocking puts it back there.
+    var unlockedFrame: WindowFrame?
     var isHidden: Bool
     var reminderDate: Date?
     var completedAt: Date?
@@ -96,11 +100,33 @@ struct StickyNote: Codable, Identifiable {
             color: NoteColor.allCases[index % NoteColor.allCases.count],
             frame: WindowFrame(initialFrame),
             isPinned: false,
+            isLocked: false,
+            unlockedFrame: nil,
             isHidden: false,
             reminderDate: nil,
             completedAt: nil,
             createdAt: Date(),
             updatedAt: Date()
         )
+    }
+}
+
+extension StickyNote {
+    /// Notes saved before a field existed decode with its default, so an update never loses notes.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        text = try container.decode(String.self, forKey: .text)
+        richTextData = try container.decodeIfPresent(Data.self, forKey: .richTextData)
+        color = try container.decode(NoteColor.self, forKey: .color)
+        frame = try container.decode(WindowFrame.self, forKey: .frame)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
+        unlockedFrame = try container.decodeIfPresent(WindowFrame.self, forKey: .unlockedFrame)
+        isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
+        reminderDate = try container.decodeIfPresent(Date.self, forKey: .reminderDate)
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
 }

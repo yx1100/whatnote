@@ -18,11 +18,13 @@ enum StickyEditingShortcut: Equatable {
 final class StickyTextView: NSTextView {
     /// Typed text always gets a note font. Without one AppKit falls back to its small default,
     /// which shows up as small Latin letters while input methods (Chinese) still look right.
+    /// The symbol font of the to-do circle is just as small for letters, so it is no note font either.
     override var typingAttributes: [NSAttributedString.Key: Any] {
         get { super.typingAttributes }
         set {
             var attributes = newValue
-            attributes[.font] = NoteAppearance.noteFont(attributes[.font] as? NSFont)
+            let font = attributes[.font] as? NSFont
+            attributes[.font] = NoteAppearance.isSymbolFont(font) ? NoteAppearance.bodyFont() : NoteAppearance.noteFont(font)
             super.typingAttributes = attributes
         }
     }
@@ -45,6 +47,10 @@ final class StickyTextView: NSTextView {
     /// Adjusts plain text before it is pasted, e.g. drops a to-do marker pasted mid-line.
     var onPreparePaste: ((String) -> String)?
     private var lastEscapeTimestamp: TimeInterval?
+    /// A locked note can be read, scrolled, selected and copied, but not changed or closed.
+    var isLocked = false {
+        didSet { isEditable = !isLocked }
+    }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
@@ -84,6 +90,20 @@ final class StickyTextView: NSTextView {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting(.capsLock)
         let key = event.charactersIgnoringModifiers?.lowercased()
+        if isLocked, modifiers.contains(.command) {
+            if modifiers == [.command], key == "c" {
+                copy(nil)
+                return true
+            }
+            if modifiers == [.command], key == "a" {
+                selectAll(nil)
+                return true
+            }
+            // Formatting, cut, paste, links and ⌘W do nothing on a locked note.
+            let blocked = modifiers == [.command] && ["b", "i", "7", "8", "9", "k", "w", "x", "v"].contains(key ?? "")
+                || modifiers == [.command, .shift] && key == "u"
+            return blocked || super.performKeyEquivalent(with: event)
+        }
         if modifiers == [.command], key == "b" {
             onToggleBold?()
             return true
@@ -147,7 +167,10 @@ final class StickyTextView: NSTextView {
     /// composition, and a single press does nothing else in a note.
     private func handleEscape(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-        guard modifiers.isEmpty, !hasMarkedText(), ClosePreferences.closesOnDoubleEscape() else { return false }
+        guard modifiers.isEmpty, !hasMarkedText() else { return false }
+        // A locked note is not closed by Esc.
+        if isLocked { return true }
+        guard ClosePreferences.closesOnDoubleEscape() else { return false }
         if event.isARepeat { return true }
         if let last = lastEscapeTimestamp, event.timestamp - last <= NSEvent.doubleClickInterval {
             lastEscapeTimestamp = nil

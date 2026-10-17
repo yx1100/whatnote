@@ -68,6 +68,26 @@ struct StorageProbe {
         let restoredFont = restoredGuide?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
         precondition(restoredFont.map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
 
+        // Notes saved before the lock existed still load (unlocked), and the lock is saved.
+        let legacyJSON = """
+        [{"id":"\(UUID().uuidString)","text":"旧便签","color":"yellow",\
+        "frame":{"x":0,"y":0,"width":340,"height":260},"isPinned":false,"isHidden":false,\
+        "createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}]
+        """
+        let noteDecoder = JSONDecoder()
+        noteDecoder.dateDecodingStrategy = .iso8601
+        let noteEncoder = JSONEncoder()
+        noteEncoder.dateEncodingStrategy = .iso8601
+        let legacyNotes = try! noteDecoder.decode([StickyNote].self, from: Data(legacyJSON.utf8))
+        precondition(legacyNotes.count == 1 && legacyNotes[0].text == "旧便签" && !legacyNotes[0].isLocked)
+        var lockedNote = legacyNotes[0]
+        lockedNote.isLocked = true
+        let reloaded = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
+        precondition(reloaded[0].isLocked && reloaded[0].unlockedFrame == nil)
+        lockedNote.unlockedFrame = WindowFrame(NSRect(x: 10, y: 20, width: 340, height: 260))
+        let withFrame = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
+        precondition(withFrame[0].unlockedFrame?.rect == NSRect(x: 10, y: 20, width: 340, height: 260))
+
         print("storage migration and first-launch detection: pass")
     }
 }

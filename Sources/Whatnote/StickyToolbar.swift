@@ -5,6 +5,7 @@ protocol StickyToolbarDelegate: AnyObject {
     func didChooseColor(_ color: NoteColor)
     func didTapArrange()
     func didBeginToolbarDrag(with event: NSEvent)
+    func didBeginLockDrag(with event: NSEvent)
     func didTapBold()
     func didTapBulletList()
     func didTapOrderedList()
@@ -15,20 +16,26 @@ protocol StickyToolbarDelegate: AnyObject {
     func didTapImage()
     func didTapNew()
     func didTapPin()
+    func didTapLock()
     func didTapComplete()
 }
 
 /// The top strip is the drag handle. It holds three glass capsules:
-/// complete on the left, colors and note actions (new, pin, arrange) on the right.
+/// complete on the left, colors and note actions (new, lock, pin, arrange) on the right.
+/// A locked note shows only the lock and pin buttons.
 final class StickyToolbarView: NSView {
     weak var delegate: StickyToolbarDelegate?
     private let arrangeButton: NoteToolButton
     private let newButton: NoteToolButton
     private let pinButton: NoteToolButton
+    private let lockButton: NoteToolButton
     private let completeButton: NoteToolButton
     private let colorButtons: [ColorDotButton]
+    private let leadingCapsule: GlassCapsuleView
+    private let colorCapsule: GlassCapsuleView
+    private let actionCapsule: GlassCapsuleView
 
-    init(color: NoteColor, isPinned: Bool) {
+    init(color: NoteColor, isPinned: Bool, isLocked: Bool = false) {
         arrangeButton = NoteToolButton(
             symbol: "square.grid.2x2",
             tip: "排列便签",
@@ -36,16 +43,24 @@ final class StickyToolbarView: NSView {
         )
         newButton = NoteToolButton(symbol: "plus", tip: "新建便签", action: #selector(StickyToolbarView.newNote))
         pinButton = NoteToolButton(symbol: "pin", tip: "置顶", action: #selector(StickyToolbarView.togglePin))
+        lockButton = NoteToolButton(symbol: "lock.open", tip: "锁定", action: #selector(StickyToolbarView.toggleLock))
         completeButton = NoteToolButton(
             symbol: "checkmark",
             tip: "完成",
             action: #selector(StickyToolbarView.completeNoteButton)
         )
         colorButtons = NoteColor.allCases.map { ColorDotButton(color: $0) }
+        leadingCapsule = GlassCapsuleView(views: [completeButton])
+        colorCapsule = GlassCapsuleView(views: colorButtons, horizontalPadding: 5)
+        actionCapsule = GlassCapsuleView(
+            views: [newButton, lockButton, pinButton, arrangeButton],
+            horizontalPadding: 3,
+            spacing: 2
+        )
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
-        for button in [arrangeButton, newButton, pinButton, completeButton] {
+        for button in [arrangeButton, newButton, lockButton, pinButton, completeButton] {
             button.target = self
         }
         for button in colorButtons {
@@ -53,9 +68,6 @@ final class StickyToolbarView: NSView {
             button.action = #selector(selectColor(_:))
         }
 
-        let leadingCapsule = GlassCapsuleView(views: [completeButton])
-        let colorCapsule = GlassCapsuleView(views: colorButtons, horizontalPadding: 5)
-        let actionCapsule = GlassCapsuleView(views: [newButton, pinButton, arrangeButton], horizontalPadding: 3, spacing: 2)
         for capsule in [leadingCapsule, colorCapsule, actionCapsule] {
             addSubview(capsule)
         }
@@ -72,6 +84,7 @@ final class StickyToolbarView: NSView {
             colorCapsule.leadingAnchor.constraint(greaterThanOrEqualTo: leadingCapsule.trailingAnchor, constant: 6)
         ])
         update(color: color, isPinned: isPinned)
+        update(isLocked: isLocked)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -98,12 +111,34 @@ final class StickyToolbarView: NSView {
         pinButton.setSymbol(isPinned ? "pin.fill" : "pin", tip: isPinned ? "取消置顶" : "置顶")
         pinButton.accentColor = color.accent
         pinButton.isActive = isPinned
+        lockButton.accentColor = color.accent
+    }
+
+    /// A locked note hides what would change it or add to it: the complete button, the colors,
+    /// new and arrange. The two buttons left lose their glass, like the rest of the flat note.
+    func update(isLocked: Bool) {
+        // The filled lock is drawn smaller than the pin at the same point size; 15 pt matches its height.
+        lockButton.setSymbol(
+            isLocked ? "lock.fill" : "lock.open",
+            tip: isLocked ? "解锁" : "锁定",
+            pointSize: isLocked ? 15 : 13,
+            lift: isLocked ? 1.5 : 0
+        )
+        lockButton.isActive = isLocked
+        leadingCapsule.isHidden = isLocked
+        colorCapsule.isHidden = isLocked
+        actionCapsule.isFlat = isLocked
+        newButton.isHidden = isLocked
+        arrangeButton.isHidden = isLocked
+        // The lock button is the one handle that moves a locked note.
+        lockButton.onBeginDrag = isLocked ? { [weak self] event in self?.delegate?.didBeginLockDrag(with: event) } : nil
     }
 
     @objc private func selectColor(_ sender: ColorDotButton) { delegate?.didChooseColor(sender.noteColor) }
     @objc private func arrangeNotes() { delegate?.didTapArrange() }
     @objc private func newNote() { delegate?.didTapNew() }
     @objc private func togglePin() { delegate?.didTapPin() }
+    @objc private func toggleLock() { delegate?.didTapLock() }
     @objc private func completeNoteButton() { delegate?.didTapComplete() }
 }
 

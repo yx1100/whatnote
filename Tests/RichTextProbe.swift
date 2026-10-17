@@ -628,6 +628,20 @@ struct RichTextProbe {
         todoIndentEditor.setSelectedRange(NSRange(location: 5, length: 0))
         let secondTodoIndents = RichTextFormatting.adjustBulletLevel(in: todoIndentEditor, delta: 1)
             && (todoIndentEditor.textStorage?.attribute(.paragraphStyle, at: 4, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        // Bullets and checklist items nest under a list item of another kind.
+        let bulletUnderTodoEditor = NSTextView()
+        bulletUnderTodoEditor.isRichText = true
+        bulletUnderTodoEditor.string = "☐ 甲\n• "
+        bulletUnderTodoEditor.setSelectedRange(NSRange(location: 6, length: 0))
+        let bulletUnderTodo = RichTextFormatting.adjustBulletLevel(in: bulletUnderTodoEditor, delta: 1)
+            && bulletUnderTodoEditor.string == "☐ 甲\n∘ "
+        let todoUnderBulletEditor = NSTextView()
+        todoUnderBulletEditor.isRichText = true
+        todoUnderBulletEditor.string = "1. 一\n☐ 乙"
+        todoUnderBulletEditor.setSelectedRange(NSRange(location: 6, length: 0))
+        let todoUnderOrdered = RichTextFormatting.adjustBulletLevel(in: todoUnderBulletEditor, delta: 1)
+            && (todoUnderBulletEditor.textStorage?.attribute(.paragraphStyle, at: 5, effectiveRange: nil) as? NSParagraphStyle)?.firstLineHeadIndent == 18
+        let mixedNesting = bulletUnderTodo && todoUnderOrdered
         // An empty item takes the type of the list Markdown typed after its marker.
         let switchedType = convertedEditor("• 1. ").string == "1. "
             && convertedEditor("1. [] ").string == "☐ "
@@ -635,8 +649,19 @@ struct RichTextProbe {
             && convertedEditor("• 【】 ").string == "☐ "
         let nestedMarkdown = ListMarker.length(in: "1.2. 项", atParagraphStart: 0) == 5
             && ListMarker.markdown(from: "1. 一\n1.1. 二") == "1. 一\n   1. 二"
-        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && switchedType && nestedMarkdown
-        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) switch=\(switchedType) markdown=\(nestedMarkdown)")
+        let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && mixedNesting && switchedType && nestedMarkdown
+        print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) mixed=\(mixedNesting) switch=\(switchedType) markdown=\(nestedMarkdown)")
+
+        // Headings: # is 24 pt, ## 20 pt, ### body size; only the first two are told apart by size.
+        let headingSizesRight = RichTextFormatting.headingFont(level: 1).pointSize == 24
+            && RichTextFormatting.headingFont(level: 2).pointSize == 20
+            && RichTextFormatting.headingFont(level: 3).pointSize == 16
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 1)) == 1
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 2)) == 2
+            && RichTextFormatting.headingLevel(of: NoteAppearance.bodyFont()) == nil
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 3)) == nil
+        print("headingSizes=\(headingSizesRight)")
+        guard headingSizesRight else { exit(40) }
 
         // Text that came in without a font (AppKit's small default) gets the body font back.
         let fontlessEditor = NSTextView()
@@ -647,7 +672,19 @@ struct RichTextProbe {
         let fontsRepaired = (0..<3).allSatisfy {
             (fontlessEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)?.pointSize == NoteAppearance.bodyFontSize
         }
-        print("fontsRepaired=\(fontsRepaired)")
+        // Letters drawn in the symbol font (small) get the body font; the to-do marker keeps it.
+        let symbolFont = NSFont(name: "AppleSymbols", size: 16)!
+        let symbolEditor = NSTextView()
+        symbolEditor.isRichText = true
+        symbolEditor.textStorage?.setAttributedString(NSAttributedString(
+            string: "☐ 反编译hapigo\n",
+            attributes: [.font: symbolFont]
+        ))
+        RichTextFormatting.applyMarkdownSyntax(in: symbolEditor)
+        let repairedLetters = (2..<11).allSatisfy {
+            !NoteAppearance.isSymbolFont(symbolEditor.textStorage?.attribute(.font, at: $0, effectiveRange: nil) as? NSFont)
+        } && NoteAppearance.isSymbolFont(symbolEditor.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        print("fontsRepaired=\(fontsRepaired) symbolLetters=\(repairedLetters)")
 
         // Wrapped lines of a list item start where its text starts, whatever the marker's width.
         let wrapStorage = NSTextStorage(
@@ -692,7 +729,7 @@ let numberAxis: Bool = {
                 print("bulletShapes=\(bulletShapes)")
         print("hangsAligned=\(hangsAligned) shortNumber=\(shortNumberAligned)")
 
-        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
+        let codeBlocks = numberAxis && bulletShapes && hangsAligned && shortNumberAligned && fontsRepaired && repairedLetters && nesting && bodyBelowHeading && headingKept && plainLineAfterList && listMarkers && dividerCursor && codeButton && trailingLinePlain && fenceStarted && codeKeepsMarkdown && codeContinues && codeEnds && codeRoundTrip && codeBackspace && pastedCode
         print("codeBlock start=\(fenceStarted) keepsMarkdown=\(codeKeepsMarkdown) continues=\(codeContinues) ends=\(codeEnds) roundTrip=\(codeRoundTrip) backspace=\(codeBackspace) pasted=\(pastedCode)")
 
         print("bold=\(boldSurvived) legacyStrike=\(strikeSurvived) todo=\(todoPending && todoCompleted && todoRemoved && todoSurvived && todoSelectionPreserved && completedTodoNewline && splitCompletedTodo) bullet=\(bulletSurvived) futureBold=\(futureBoldOn && futureBoldOff) bulletToggle=\(bulletsOn && bulletsOff && bulletSelectionPreserved && bulletBecameTodo && todoBecameBullet) markdown=\(markdownChanged && markdownBold && markdownBullets && extendedMarkdown && trailingIsRegular) listExit=\(listExitClean) nesting=\(multiLevelOn && multiLevelOff && multiLevelSurvived && orphanPrevented && tieredMarkers && inheritedMarker && normalizedLegacyMarker) markerProportions=\(markerProportionsAreBalanced) bytes=\(data.count)")

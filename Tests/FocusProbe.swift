@@ -73,6 +73,19 @@ struct FocusProbe {
             return noteIndex < peerIndex
         } ?? false
 
+        // Locking turns a note into the widget size from its top-left corner; unlocking restores it.
+        let lockController = StickyWindowController(note: .fresh())
+        let beforeLock = lockController.displayedFrame
+        lockController.didTapLock()
+        let locked = lockController.displayedFrame
+        let lockedShadowless = lockController.window?.hasShadow == false
+        lockController.didTapLock()
+        let widgetSizedWhenLocked = locked.size == NoteAppearance.lockedSize
+            && locked.minX == beforeLock.minX && locked.maxY == beforeLock.maxY
+        let restoredOnUnlock = lockController.displayedFrame == beforeLock && lockController.window?.hasShadow == true
+        print("lockWidget=\(widgetSizedWhenLocked) shadowless=\(lockedShadowless) restored=\(restoredOnUnlock)")
+        guard widgetSizedWhenLocked, lockedShadowless, restoredOnUnlock else { exit(2) }
+
         print("canBecomeKey=\(window.canBecomeKey) canBecomeMain=\(window.canBecomeMain) unpinned=\(unpinnedBehavior) pinned=\(pinnedBehavior) dedicatedProxy=\(usesDedicatedPinnedProxy) restoresResident=\(restoresOriginalDesktopWindow) keepsOrderAfterBlur=\(keepsStandardOrderAfterResigningKey)")
         guard window.canBecomeKey,
               window.canBecomeMain,

@@ -86,7 +86,8 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     @objc func newNoteFromMenu() { createNote() }
 
     @objc func arrangeNotes() {
-        let visibleNotes = NoteStore.shared.activeNotes.filter { !$0.isHidden }
+        // Locked notes stay where they are; the others are arranged around the screen edges as before.
+        let visibleNotes = NoteStore.shared.activeNotes.filter { !$0.isHidden && !$0.isLocked }
         let notes = visibleNotes
             .sorted {
                 if $0.createdAt == $1.createdAt { return $0.id.uuidString < $1.id.uuidString }

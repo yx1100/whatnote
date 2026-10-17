@@ -8,6 +8,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     private var isApplyingMarkdown = false
     weak var appController: AppController?
     var isPinned: Bool { note.isPinned }
+    var isLocked: Bool { note.isLocked }
 
     init(note: StickyNote) {
         self.note = note
@@ -71,6 +72,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
             NoteStore.shared.update(self.note)
         }
         applyPinState()
+        applyLockState()
         updateFormattingState()
         // A note saved shorter than its text stays that size when edited.
         DispatchQueue.main.async { [weak self] in self?.updateGrowsWithText() }
@@ -191,7 +193,16 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
 
     func didTapArrange() { appController?.arrangeNotes() }
 
+    /// Dragging from the lock button moves a locked note, which is otherwise fixed in place.
+    func didBeginLockDrag(with event: NSEvent) {
+        let window = windowResidency.activeWindow
+        window.isMovable = true
+        window.performDrag(with: event)
+        window.isMovable = !note.isLocked
+    }
+
     func didBeginToolbarDrag(with event: NSEvent) {
+        guard !note.isLocked else { return }
         appController?.beginDragging(noteID: note.id, event: event)
     }
 
@@ -278,7 +289,57 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         NoteStore.shared.update(note)
     }
 
+    /// Locking takes the widget size from the top-left corner and remembers the old frame;
+    /// unlocking puts the note back there.
+    func didTapLock() {
+        let window = windowResidency.activeWindow
+        let frame = window.frame
+        note.isLocked.toggle()
+        var target: NSRect?
+        if note.isLocked {
+            note.unlockedFrame = WindowFrame(frame)
+            let size = NoteAppearance.lockedSize
+            target = NSRect(x: frame.minX, y: frame.maxY - size.height, width: size.width, height: size.height)
+        } else if let before = note.unlockedFrame {
+            note.unlockedFrame = nil
+            target = before.rect
+        }
+        applyLockState()
+        if let target {
+            window.setFrame(target, display: true, animate: true)
+            saveFrame(target)
+        } else {
+            NoteStore.shared.update(note)
+        }
+    }
+
+    /// A locked note stays where it is and as it is: no dragging, resizing, editing or closing.
+    /// It can still be scrolled, and its to-do items checked.
+    private func applyLockState() {
+        rootView.updateLock(note.isLocked)
+        applyShadow()
+        for window in [windowResidency.residentWindow, windowResidency.pinnedWindow].compactMap({ $0 }) {
+            applyResizable(to: window)
+        }
+    }
+
+    /// The flat locked note has no shadow. Only the window on show counts: the resident window
+    /// behind a pinned note is invisible and stays without one.
+    private func applyShadow() {
+        windowResidency.activeWindow.hasShadow = !note.isLocked
+    }
+
+    private func applyResizable(to window: NSWindow) {
+        window.isMovable = !note.isLocked
+        if note.isLocked {
+            window.styleMask.remove(.resizable)
+        } else {
+            window.styleMask.insert(.resizable)
+        }
+    }
+
     func didTapComplete() {
+        guard !note.isLocked else { return }
         let id = note.id
         window?.orderOut(nil)
         appController?.completeNote(id: id)
@@ -308,6 +369,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
             StickyWindowPresentation.apply(isPinned: note.isPinned, to: window)
         }
         rootView.toolbar.update(color: note.color, isPinned: note.isPinned)
+        applyShadow()
         if isBecomingPinned {
             window?.orderFrontRegardless()
             if focusWhenPinned {
@@ -362,6 +424,10 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     /// A click on a to-do circle checks or unchecks that item.
     private func toggleTodoMarker(at index: Int) {
         let textView = rootView.textView
+        // Checking an item is allowed on a locked note; only this edit gets through.
+        let wasLocked = textView.isLocked
+        if wasLocked { textView.isEditable = true }
+        defer { if wasLocked { textView.isEditable = false } }
         guard RichTextFormatting.toggleTodoCompletion(atParagraphStart: index, in: textView) else { return }
         window?.makeFirstResponder(textView)
         updateFormattingState()
@@ -395,14 +461,14 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     /// Extends the note downward while its text needs more room, keeping the top edge in place,
     /// until the bottom reaches the edge of the screen. It never shrinks the note.
     private func growToFitText() {
-        guard growsWithText, let needed = heightFittingText(), needed > windowResidency.activeWindow.frame.height + 0.5 else { return }
+        guard growsWithText, !note.isLocked, let needed = heightFittingText(), needed > windowResidency.activeWindow.frame.height + 0.5 else { return }
         setHeight(needed, animate: false)
     }
 
     /// Double-clicking the bottom edge makes the note exactly as tall as its text, longer or
     /// shorter, keeping the top edge in place.
     func fitHeightToText() {
-        guard let needed = heightFittingText() else { return }
+        guard !note.isLocked, let needed = heightFittingText() else { return }
         growsWithText = true
         setHeight(max(needed, NoteAppearance.minimumSize.height), animate: true)
     }
@@ -436,6 +502,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
         window.hasShadow = true
         window.minSize = NoteAppearance.minimumSize
         window.isMovableByWindowBackground = false
+        applyResizable(to: window)
         window.animationBehavior = .utilityWindow
     }
 
