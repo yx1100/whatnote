@@ -56,6 +56,27 @@ struct ToolbarProbe {
         lockedNote.isLocked = true
         let lockedRoot = StickyRootView(note: lockedNote)
         guard !lockedRoot.textView.isEditable, lockedRoot.textView.isSelectable, lockedRoot.footer.isHidden else { exit(27) }
+        // A locked note whose text fits does not scroll; the same text in an open note still leaves room under the formatting bar.
+        func scrollRange(of root: StickyRootView) -> CGFloat {
+            let host = NSWindow(contentRect: NSRect(origin: .zero, size: NoteAppearance.lockedSize), styleMask: [.borderless], backing: .buffered, defer: false)
+            host.contentView = root
+            root.frame = NSRect(origin: .zero, size: NoteAppearance.lockedSize)
+            root.layoutSubtreeIfNeeded()
+            let insets = root.scrollView.contentInsets
+            return root.textView.frame.height + insets.top + insets.bottom - root.scrollView.contentView.bounds.height
+        }
+        var shortNote = StickyNote.fresh()
+        shortNote.text = (1...10).map { "第\($0)行" }.joined(separator: "\n")
+        shortNote.isLocked = true
+        let shortLocked = StickyRootView(note: shortNote)
+        guard scrollRange(of: shortLocked) <= 0.5 else { exit(34) }
+        var shortOpen = shortNote
+        shortOpen.isLocked = false
+        guard scrollRange(of: StickyRootView(note: shortOpen)) > 0.5 else { exit(36) }
+        var longNote = shortNote
+        longNote.text = (0..<40).map { "第\($0)行" }.joined(separator: "\n")
+        guard scrollRange(of: StickyRootView(note: longNote)) > 0.5 else { exit(35) }
+
         // Locked paper is flat (no border), rounder and a little see-through; unlocking restores it.
         let lockedPaper = lockedRoot.layer
         guard lockedPaper?.cornerRadius == NoteAppearance.lockedCornerRadius, lockedPaper?.borderWidth == 0,

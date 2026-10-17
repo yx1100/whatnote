@@ -36,14 +36,7 @@ final class StickyRootView: NSView {
         scrollView.borderType = .noBorder
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.automaticallyAdjustsContentInsets = false
-        let barInsets = NSEdgeInsets(
-            top: NoteAppearance.topBarHeight,
-            left: 0,
-            bottom: NoteAppearance.bottomBarHeight,
-            right: 0
-        )
-        scrollView.contentInsets = barInsets
-        scrollView.scrollerInsets = barInsets
+        updateScrollInsets(isLocked: note.isLocked)
 
         // TextKit 1 with a layout manager that draws to-do checkboxes; TextKit 1 also sizes image attachments reliably.
         _ = textView.layoutManager
@@ -117,7 +110,21 @@ final class StickyRootView: NSView {
         layer?.borderWidth = isLocked ? 0 : 0.5
         applyPaperColor()
         footer.isHidden = isLocked
+        updateScrollInsets(isLocked: isLocked)
         toolbar.update(isLocked: isLocked)
+    }
+
+    /// Text scrolls under the top bar and the formatting bar; a locked note has no formatting
+    /// bar, so nothing is reserved below the text and short text does not scroll.
+    private func updateScrollInsets(isLocked: Bool) {
+        let insets = NSEdgeInsets(
+            top: NoteAppearance.topBarHeight,
+            left: 0,
+            bottom: isLocked ? 0 : NoteAppearance.bottomBarHeight,
+            right: 0
+        )
+        scrollView.contentInsets = insets
+        scrollView.scrollerInsets = insets
     }
 
     func updateColor(_ color: NoteColor) {
