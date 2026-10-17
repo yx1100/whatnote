@@ -652,6 +652,17 @@ struct RichTextProbe {
         let nesting = nestedIn && nestedReturn && nestedOut && firstTodoStays && secondTodoIndents && mixedNesting && switchedType && nestedMarkdown
         print("nestedLists in=\(nestedIn) return=\(nestedReturn) out=\(nestedOut) todoIndent=\(firstTodoStays && secondTodoIndents) mixed=\(mixedNesting) switch=\(switchedType) markdown=\(nestedMarkdown)")
 
+        // Headings: # is 24 pt, ## 20 pt, ### body size; only the first two are told apart by size.
+        let headingSizesRight = RichTextFormatting.headingFont(level: 1).pointSize == 24
+            && RichTextFormatting.headingFont(level: 2).pointSize == 20
+            && RichTextFormatting.headingFont(level: 3).pointSize == 16
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 1)) == 1
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 2)) == 2
+            && RichTextFormatting.headingLevel(of: NoteAppearance.bodyFont()) == nil
+            && RichTextFormatting.headingLevel(of: RichTextFormatting.headingFont(level: 3)) == nil
+        print("headingSizes=\(headingSizesRight)")
+        guard headingSizesRight else { exit(40) }
+
         // Text that came in without a font (AppKit's small default) gets the body font back.
         let fontlessEditor = NSTextView()
         fontlessEditor.isRichText = true

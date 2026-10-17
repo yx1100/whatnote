@@ -115,7 +115,8 @@ enum RichTextFormatting {
         textView.didChangeText()
     }
 
-    static let headingSizes: [CGFloat] = [24, 22, 20]
+    /// Level 3 is body size (set apart by its weight), so only levels 1 and 2 are told by size.
+    static let headingSizes: [CGFloat] = [24, 20, 16]
 
     static func headingFont(level: Int) -> NSFont {
         let clamped = min(max(level, 1), headingSizes.count)
@@ -124,7 +125,7 @@ enum RichTextFormatting {
 
     static func headingLevel(of font: NSFont?) -> Int? {
         guard let font else { return nil }
-        return headingSizes.firstIndex(where: { abs($0 - font.pointSize) < 0.5 }).map { $0 + 1 }
+        return headingSizes.firstIndex(where: { $0 > NoteAppearance.bodyFontSize && abs($0 - font.pointSize) < 0.5 }).map { $0 + 1 }
     }
 
     /// Code lines always end with their own newline, so the empty line after a block at the

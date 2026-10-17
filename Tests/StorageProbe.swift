@@ -84,8 +84,6 @@ struct StorageProbe {
         lockedNote.isLocked = true
         let reloaded = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
         precondition(reloaded[0].isLocked && reloaded[0].unlockedFrame == nil)
-        // Notes saved before text-size generations are generation 0 and are converted once.
-        precondition(legacyNotes[0].fontGeneration == 0 && StickyNote.fresh().fontGeneration == NoteAppearance.fontGeneration)
         lockedNote.unlockedFrame = WindowFrame(NSRect(x: 10, y: 20, width: 340, height: 260))
         let withFrame = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
         precondition(withFrame[0].unlockedFrame?.rect == NSRect(x: 10, y: 20, width: 340, height: 260))

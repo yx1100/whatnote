@@ -73,8 +73,6 @@ struct StickyNote: Codable, Identifiable {
     var isLocked: Bool
     /// Where a locked note was before it took the widget size; unlocking puts it back there.
     var unlockedFrame: WindowFrame?
-    /// The text-size generation the saved text uses; older notes are converted when they load.
-    var fontGeneration: Int
     var isHidden: Bool
     var reminderDate: Date?
     var completedAt: Date?
@@ -104,7 +102,6 @@ struct StickyNote: Codable, Identifiable {
             isPinned: false,
             isLocked: false,
             unlockedFrame: nil,
-            fontGeneration: NoteAppearance.fontGeneration,
             isHidden: false,
             reminderDate: nil,
             completedAt: nil,
@@ -126,7 +123,6 @@ extension StickyNote {
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         unlockedFrame = try container.decodeIfPresent(WindowFrame.self, forKey: .unlockedFrame)
-        fontGeneration = try container.decodeIfPresent(Int.self, forKey: .fontGeneration) ?? 0
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
         reminderDate = try container.decodeIfPresent(Date.self, forKey: .reminderDate)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
