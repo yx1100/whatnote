@@ -9,6 +9,7 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     weak var appController: AppController?
     var isPinned: Bool { note.isPinned }
     var isLocked: Bool { note.isLocked }
+    var stickyWindows: [StickyWindow] { [windowResidency.residentWindow, windowResidency.pinnedWindow].compactMap { $0 } }
 
     init(note: StickyNote) {
         self.note = note
@@ -341,7 +342,11 @@ final class StickyWindowController: NSWindowController, NSWindowDelegate, NSText
     func didTapComplete() {
         guard !note.isLocked else { return }
         let id = note.id
-        window?.orderOut(nil)
+        if let appController {
+            appController.hideKeepingLockedNotesBehind { window?.orderOut(nil) }
+        } else {
+            window?.orderOut(nil)
+        }
         appController?.completeNote(id: id)
     }
 

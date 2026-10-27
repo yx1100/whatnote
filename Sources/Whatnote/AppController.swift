@@ -50,6 +50,16 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         dismissHistoryPopover()
     }
 
+    /// Runs `hide`, which hides a note's window. AppKit makes the next window key as it does, and
+    /// would bring a locked note up from behind other apps' windows, so locked notes sit out of that
+    /// choice until the hide is done.
+    func hideKeepingLockedNotesBehind(_ hide: () -> Void) {
+        let locked = controllers.values.filter(\.isLocked).flatMap(\.stickyWindows)
+        locked.forEach { $0.refusesKey = true }
+        hide()
+        DispatchQueue.main.async { locked.forEach { $0.refusesKey = false } }
+    }
+
     func show(noteID: UUID) {
         guard let note = NoteStore.shared.note(id: noteID), note.completedAt == nil else { return }
         if controllers[noteID] == nil { open(note) }
