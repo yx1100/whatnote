@@ -86,6 +86,13 @@ struct FocusProbe {
         print("lockWidget=\(widgetSizedWhenLocked) shadowless=\(lockedShadowless) restored=\(restoredOnUnlock)")
         guard widgetSizedWhenLocked, lockedShadowless, restoredOnUnlock else { exit(2) }
 
+        // A window that refuses the key (a locked note while another note hides) cannot take it, and can again afterwards.
+        let refuser = StickyWindow(contentRect: NSRect(x: 0, y: 0, width: 100, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+        refuser.refusesKey = true
+        let refuses = !refuser.canBecomeKey && !refuser.canBecomeMain
+        refuser.refusesKey = false
+        guard refuses, refuser.canBecomeKey, refuser.canBecomeMain else { exit(3) }
+
         print("canBecomeKey=\(window.canBecomeKey) canBecomeMain=\(window.canBecomeMain) unpinned=\(unpinnedBehavior) pinned=\(pinnedBehavior) dedicatedProxy=\(usesDedicatedPinnedProxy) restoresResident=\(restoresOriginalDesktopWindow) keepsOrderAfterBlur=\(keepsStandardOrderAfterResigningKey)")
         guard window.canBecomeKey,
               window.canBecomeMain,

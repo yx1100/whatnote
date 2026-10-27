@@ -6,8 +6,12 @@ final class StickyWindow: NSWindow {
     static let bottomEdgeHeight: CGFloat = 24
     var onBottomEdgeDoubleClick: (() -> Void)?
 
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+    /// Set while another note hides: AppKit then makes the next window key and brings it to the
+    /// front, which would pull a locked note up from behind other apps' windows.
+    var refusesKey = false
+
+    override var canBecomeKey: Bool { !refusesKey }
+    override var canBecomeMain: Bool { !refusesKey }
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown, event.clickCount == 2,
