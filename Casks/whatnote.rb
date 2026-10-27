@@ -1,6 +1,6 @@
 cask "whatnote" do
-  version "1.5.5"
-  sha256 "f1e3accb51b3cc93a49e2e87cd3640af2954ac338c7dc765650e60157c9bc510"
+  version "1.5.6"
+  sha256 "ab550016d2e7aa52e0179f8d0a575d4b2010db688544105b75b3909bb7ecda1a"
 
   url "https://github.com/yx1100/whatnote/releases/download/v#{version}/Whatnote-v#{version}-macOS-arm64.zip"
   name "Whatnote"
