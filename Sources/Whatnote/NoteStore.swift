@@ -110,8 +110,18 @@ final class NoteStore {
     func update(_ note: StickyNote) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else { return }
         var changed = note
-        changed.updatedAt = Date()
+        // Moving, resizing or recoloring a note is not an edit of its content.
+        let existing = notes[index]
+        if existing.text != note.text || existing.richTextData != note.richTextData {
+            changed.updatedAt = Date()
+        }
         notes[index] = changed
+        scheduleSave()
+    }
+
+    /// Writes any change still waiting for the save delay. Call before the app quits.
+    func flush() {
+        guard pendingSave != nil else { return }
         save()
     }
 
@@ -140,7 +150,19 @@ final class NoteStore {
         save()
     }
 
+    /// Edits and window moves arrive many times a second; they are written once they pause.
+    private func scheduleSave() {
+        pendingSave?.cancel()
+        pendingSave = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: Self.saveDelay)
+            guard !Task.isCancelled else { return }
+            self?.save()
+        }
+    }
+
     private func save() {
+        pendingSave?.cancel()
+        pendingSave = nil
         guard canSave else { return }
         do {
             let data = try encoder.encode(notes)

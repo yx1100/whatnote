@@ -104,6 +104,21 @@ struct StorageProbe {
         precondition(backupData == brokenData)
         precondition(NoteStore(baseURL: corruptBase, manager: manager).activeNotes.map(\.text) == ["新便签"])
 
+        // Edits are written after a short delay; flush() writes them at once.
+        let delayedBase = root.appendingPathComponent("delayed", isDirectory: true)
+        let delayedStore = NoteStore(baseURL: delayedBase, manager: manager)
+        var delayedNote = delayedStore.add(text: "first")
+        let createdUpdatedAt = delayedNote.updatedAt
+        delayedNote.frame = WindowFrame(NSRect(x: 5, y: 5, width: 300, height: 200))
+        delayedStore.update(delayedNote)
+        precondition(delayedStore.note(id: delayedNote.id)?.updatedAt == createdUpdatedAt)
+        delayedNote.text = "second"
+        delayedStore.update(delayedNote)
+        precondition(delayedStore.note(id: delayedNote.id)!.updatedAt > createdUpdatedAt)
+        precondition(NoteStore(baseURL: delayedBase, manager: manager).notes[0].text == "first")
+        delayedStore.flush()
+        precondition(NoteStore(baseURL: delayedBase, manager: manager).notes[0].text == "second")
+
         print("storage migration and first-launch detection: pass")
     }
 }
