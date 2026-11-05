@@ -38,6 +38,11 @@ final class NoteStore {
     private(set) var notes: [StickyNote] = []
     private(set) var isFirstLaunch: Bool
     private let fileURL: URL
+    /// False when an unreadable notes.json could not be set aside; saving would destroy it.
+    private var canSave = true
+    private var pendingSave: Task<Void, Never>?
+    /// How long text edits and window moves wait before they are written to disk.
+    private static let saveDelay: UInt64 = 400_000_000
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -54,9 +59,28 @@ final class NoteStore {
         let base = baseURL ?? manager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         fileURL = NoteStorage.resolveFileURL(in: base, manager: manager)
         isFirstLaunch = !manager.fileExists(atPath: fileURL.path)
-        guard let data = try? Data(contentsOf: fileURL),
-              let decoded = try? decoder.decode([StickyNote].self, from: data) else { return }
-        notes = decoded
+        guard !isFirstLaunch else { return }
+        if let data = try? Data(contentsOf: fileURL),
+           let decoded = try? decoder.decode([StickyNote].self, from: data) {
+            notes = decoded
+        } else {
+            quarantineUnreadableFile(manager: manager)
+        }
+    }
+
+    /// An unreadable notes.json must never be overwritten by the next save. Move it aside
+    /// as a backup; if that is impossible, stop saving so the file stays as it is.
+    private func quarantineUnreadableFile(manager: FileManager) {
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let backup = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("notes.corrupt-\(stamp).json")
+        do {
+            try manager.moveItem(at: fileURL, to: backup)
+            FileHandle.standardError.write(Data("notes.json is unreadable; moved to \(backup.path)\n".utf8))
+        } catch {
+            canSave = false
+            FileHandle.standardError.write(Data("notes.json is unreadable and could not be moved: \(error)\n".utf8))
+        }
     }
 
     var activeNotes: [StickyNote] { NoteHistory.activeNotes(in: notes) }
@@ -117,7 +141,12 @@ final class NoteStore {
     }
 
     private func save() {
-        guard let data = try? encoder.encode(notes) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard canSave else { return }
+        do {
+            let data = try encoder.encode(notes)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            FileHandle.standardError.write(Data("could not save notes: \(error)\n".utf8))
+        }
     }
 }

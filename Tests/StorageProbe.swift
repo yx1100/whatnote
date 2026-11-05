@@ -88,6 +88,22 @@ struct StorageProbe {
         let withFrame = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
         precondition(withFrame[0].unlockedFrame?.rect == NSRect(x: 10, y: 20, width: 340, height: 260))
 
+        // An unreadable notes.json is set aside, not overwritten by the next save.
+        let corruptBase = root.appendingPathComponent("corrupt", isDirectory: true)
+        let corruptDirectory = corruptBase.appendingPathComponent("Whatnote", isDirectory: true)
+        try manager.createDirectory(at: corruptDirectory, withIntermediateDirectories: true)
+        let brokenData = Data("{ not valid json".utf8)
+        try brokenData.write(to: corruptDirectory.appendingPathComponent("notes.json"))
+        let corruptStore = NoteStore(baseURL: corruptBase, manager: manager)
+        precondition(corruptStore.notes.isEmpty && !corruptStore.isFirstLaunch)
+        corruptStore.add(text: "新便签")
+        let backups = try manager.contentsOfDirectory(atPath: corruptDirectory.path)
+            .filter { $0.hasPrefix("notes.corrupt-") }
+        precondition(backups.count == 1)
+        let backupData = try Data(contentsOf: corruptDirectory.appendingPathComponent(backups[0]))
+        precondition(backupData == brokenData)
+        precondition(NoteStore(baseURL: corruptBase, manager: manager).activeNotes.map(\.text) == ["新便签"])
+
         print("storage migration and first-launch detection: pass")
     }
 }
