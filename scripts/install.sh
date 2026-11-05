@@ -22,7 +22,19 @@ main() {
 
   print "→ 获取 $branch"
   git fetch --quiet origin "$branch"
-  git checkout --quiet -B "$branch" "origin/$branch"
+  # Never reset a local branch that has commits origin does not: they would be lost.
+  if git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null \
+      && [[ -n "$(git rev-list "origin/$branch..refs/heads/$branch")" ]]; then
+    print -u2 "✗ 本地 $branch 有尚未推送的提交，先推送或处理后再运行："
+    git log --oneline "origin/$branch..refs/heads/$branch" >&2
+    exit 1
+  fi
+  if git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null; then
+    git checkout --quiet "$branch"
+    git merge --quiet --ff-only "origin/$branch"
+  else
+    git checkout --quiet -b "$branch" "origin/$branch"
+  fi
   print "  $(git log --oneline -1)"
 
   print "→ 运行检查"

@@ -33,6 +33,10 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        NoteStore.shared.flush()
+    }
+
     func createNote(near sourceFrame: NSRect? = nil, in visibleFrame: NSRect? = nil) {
         let frame = sourceFrame.flatMap { source in
             visibleFrame.map {

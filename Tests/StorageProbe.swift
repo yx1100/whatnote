@@ -88,6 +88,37 @@ struct StorageProbe {
         let withFrame = try! noteDecoder.decode([StickyNote].self, from: noteEncoder.encode([lockedNote]))
         precondition(withFrame[0].unlockedFrame?.rect == NSRect(x: 10, y: 20, width: 340, height: 260))
 
+        // An unreadable notes.json is set aside, not overwritten by the next save.
+        let corruptBase = root.appendingPathComponent("corrupt", isDirectory: true)
+        let corruptDirectory = corruptBase.appendingPathComponent("Whatnote", isDirectory: true)
+        try manager.createDirectory(at: corruptDirectory, withIntermediateDirectories: true)
+        let brokenData = Data("{ not valid json".utf8)
+        try brokenData.write(to: corruptDirectory.appendingPathComponent("notes.json"))
+        let corruptStore = NoteStore(baseURL: corruptBase, manager: manager)
+        precondition(corruptStore.notes.isEmpty && !corruptStore.isFirstLaunch)
+        corruptStore.add(text: "新便签")
+        let backups = try manager.contentsOfDirectory(atPath: corruptDirectory.path)
+            .filter { $0.hasPrefix("notes.corrupt-") }
+        precondition(backups.count == 1)
+        let backupData = try Data(contentsOf: corruptDirectory.appendingPathComponent(backups[0]))
+        precondition(backupData == brokenData)
+        precondition(NoteStore(baseURL: corruptBase, manager: manager).activeNotes.map(\.text) == ["新便签"])
+
+        // Edits are written after a short delay; flush() writes them at once.
+        let delayedBase = root.appendingPathComponent("delayed", isDirectory: true)
+        let delayedStore = NoteStore(baseURL: delayedBase, manager: manager)
+        var delayedNote = delayedStore.add(text: "first")
+        let createdUpdatedAt = delayedNote.updatedAt
+        delayedNote.frame = WindowFrame(NSRect(x: 5, y: 5, width: 300, height: 200))
+        delayedStore.update(delayedNote)
+        precondition(delayedStore.note(id: delayedNote.id)?.updatedAt == createdUpdatedAt)
+        delayedNote.text = "second"
+        delayedStore.update(delayedNote)
+        precondition(delayedStore.note(id: delayedNote.id)!.updatedAt > createdUpdatedAt)
+        precondition(NoteStore(baseURL: delayedBase, manager: manager).notes[0].text == "first")
+        delayedStore.flush()
+        precondition(NoteStore(baseURL: delayedBase, manager: manager).notes[0].text == "second")
+
         print("storage migration and first-launch detection: pass")
     }
 }
